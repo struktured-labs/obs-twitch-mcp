@@ -1,0 +1,9 @@
+setenv.sh
+__pycache__/
+*.pyc
+.venv/
+.env
+tmp/
+*.egg-info/
+dist/
+build/

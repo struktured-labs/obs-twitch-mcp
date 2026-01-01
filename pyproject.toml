@@ -1,0 +1,27 @@
+[project]
+name = "obs-twitch-mcp"
+version = "0.1.0"
+description = "Unified MCP server for OBS Studio and Twitch integration with real-time game translation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.0.0",
+    "obsws-python>=1.7.0",
+    "twitchAPI>=4.0.0",
+    "pillow>=10.0.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

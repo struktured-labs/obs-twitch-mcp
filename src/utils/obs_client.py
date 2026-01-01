@@ -1,0 +1,194 @@
+"""
+OBS WebSocket client wrapper.
+"""
+
+import base64
+from dataclasses import dataclass
+
+import obsws_python as obs
+
+
+@dataclass
+class OBSClient:
+    """Wrapper for OBS WebSocket client."""
+
+    host: str
+    port: int
+    password: str
+    _client: obs.ReqClient | None = None
+
+    @property
+    def client(self) -> obs.ReqClient:
+        """Get or create the OBS client connection."""
+        if self._client is None:
+            self._client = obs.ReqClient(
+                host=self.host,
+                port=self.port,
+                password=self.password,
+            )
+        return self._client
+
+    def get_version(self) -> dict:
+        """Get OBS version info."""
+        v = self.client.get_version()
+        return {
+            "obs_version": v.obs_version,
+            "websocket_version": v.obs_web_socket_version,
+            "platform": v.platform,
+        }
+
+    def get_stats(self) -> dict:
+        """Get OBS statistics."""
+        s = self.client.get_stats()
+        return {
+            "cpu_usage": s.cpu_usage,
+            "memory_usage": s.memory_usage,
+            "active_fps": s.active_fps,
+            "render_skipped_frames": s.render_skipped_frames,
+            "output_skipped_frames": s.output_skipped_frames,
+        }
+
+    def list_scenes(self) -> list[str]:
+        """List all scene names."""
+        scenes = self.client.get_scene_list()
+        return [s["sceneName"] for s in scenes.scenes]
+
+    def get_current_scene(self) -> str:
+        """Get current program scene name."""
+        return self.client.get_current_program_scene().scene_name
+
+    def switch_scene(self, scene_name: str) -> None:
+        """Switch to a scene."""
+        self.client.set_current_program_scene(scene_name)
+
+    def get_scene_items(self, scene_name: str) -> list[dict]:
+        """Get items in a scene."""
+        items = self.client.get_scene_item_list(scene_name)
+        return [
+            {
+                "id": item["sceneItemId"],
+                "name": item["sourceName"],
+                "enabled": item["sceneItemEnabled"],
+            }
+            for item in items.scene_items
+        ]
+
+    def create_text_source(
+        self,
+        scene_name: str,
+        source_name: str,
+        text: str,
+        font_size: int = 60,
+        color: int = 0xFFFFFFFF,
+    ) -> int:
+        """Create a text source in a scene."""
+        self.client.create_input(
+            scene_name,
+            source_name,
+            "text_ft2_source_v2",
+            {
+                "text": text,
+                "font": {"face": "Sans Serif", "size": font_size},
+                "color1": color,
+                "color2": color,
+            },
+            True,
+        )
+        item_id = self.client.get_scene_item_id(scene_name, source_name).scene_item_id
+        return item_id
+
+    def set_source_text(self, source_name: str, text: str) -> None:
+        """Update text on a text source."""
+        self.client.set_input_settings(source_name, {"text": text}, True)
+
+    def remove_source(self, source_name: str) -> None:
+        """Remove a source."""
+        self.client.remove_input(source_name)
+
+    def set_scene_item_transform(
+        self,
+        scene_name: str,
+        item_id: int,
+        x: float | None = None,
+        y: float | None = None,
+        alignment: int = 0,
+    ) -> None:
+        """Set position of a scene item."""
+        transform = {"alignment": alignment}
+        if x is not None:
+            transform["positionX"] = x
+        if y is not None:
+            transform["positionY"] = y
+        self.client.set_scene_item_transform(scene_name, item_id, transform)
+
+    def set_volume(self, source_name: str, volume_db: float) -> None:
+        """Set volume of an audio source in dB."""
+        self.client.set_input_volume(source_name, None, volume_db)
+
+    def set_mute(self, source_name: str, muted: bool) -> None:
+        """Mute or unmute an audio source."""
+        self.client.set_input_mute(source_name, muted)
+
+    def get_screenshot(self, source_name: str | None = None, width: int = 1920, height: int = 1080) -> bytes:
+        """Capture screenshot of a source or current scene."""
+        if source_name is None:
+            source_name = self.get_current_scene()
+
+        result = self.client.get_source_screenshot(
+            name=source_name,
+            img_format="png",
+            width=width,
+            height=height,
+            quality=85,
+        )
+        # Remove data URL prefix if present
+        data = result.image_data
+        if "," in data:
+            data = data.split(",")[1]
+        return base64.b64decode(data)
+
+    def create_browser_source(
+        self,
+        scene_name: str,
+        source_name: str,
+        url: str,
+        width: int = 1920,
+        height: int = 1080,
+    ) -> int:
+        """Create a browser source."""
+        self.client.create_input(
+            scene_name,
+            source_name,
+            "browser_source",
+            {
+                "url": url,
+                "width": width,
+                "height": height,
+                "reroute_audio": True,
+            },
+            True,
+        )
+        item_id = self.client.get_scene_item_id(scene_name, source_name).scene_item_id
+        return item_id
+
+    def create_media_source(
+        self,
+        scene_name: str,
+        source_name: str,
+        file_path: str,
+        loop: bool = False,
+    ) -> int:
+        """Create a media source for video/audio files."""
+        self.client.create_input(
+            scene_name,
+            source_name,
+            "ffmpeg_source",
+            {
+                "local_file": file_path,
+                "is_local_file": True,
+                "looping": loop,
+            },
+            True,
+        )
+        item_id = self.client.get_scene_item_id(scene_name, source_name).scene_item_id
+        return item_id
