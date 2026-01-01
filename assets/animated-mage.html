@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: transparent;
+    width: 3840px;
+    height: 2160px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .mage-container {
+    position: absolute;
+    left: 1080px;
+    top: 1454px;
+    width: 613px;
+    height: 613px;
+    transform-origin: center center;
+  }
+
+  .mage {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform-origin: center center;
+    animation: lookAround 16s ease-in-out infinite;
+    filter: drop-shadow(0 0 12px rgba(138, 43, 226, 0.6));
+  }
+
+  @keyframes lookAround {
+    0% { transform: scaleX(1) rotate(0deg) translateY(0); }
+    8% { transform: scaleX(1) rotate(-4deg) translateY(-5px); }
+    15% { transform: scaleX(1) rotate(2deg) translateY(3px); }
+    22% { transform: scaleX(1) rotate(0deg) translateY(0); }
+    30% { transform: scaleX(-1) rotate(0deg) translateY(0); }
+    38% { transform: scaleX(-1) rotate(3deg) translateY(-8px); }
+    45% { transform: scaleX(-1) rotate(-2deg) translateY(5px); }
+    52% { transform: scaleX(-1) rotate(4deg) translateY(-3px); }
+    60% { transform: scaleX(-1) rotate(0deg) translateY(0); }
+    68% { transform: scaleX(1) rotate(0deg) translateY(0); }
+    75% { transform: scaleX(1) rotate(-3deg) translateY(6px); }
+    82% { transform: scaleX(1) rotate(5deg) translateY(-10px); }
+    90% { transform: scaleX(1) rotate(-2deg) translateY(4px); }
+    100% { transform: scaleX(1) rotate(0deg) translateY(0); }
+  }
+
+  .spell-burst {
+    position: absolute;
+    pointer-events: none;
+    font-size: 140px;
+    animation: burstIn 0.3s ease-out, burstOut 2.5s ease-in 0.3s forwards;
+    text-shadow: 0 0 40px currentColor, 0 0 80px currentColor, 0 0 120px currentColor;
+    z-index: 100;
+  }
+
+  @keyframes burstIn {
+    0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+    100% { transform: scale(1.3) rotate(0deg); opacity: 1; }
+  }
+
+  @keyframes burstOut {
+    0% { transform: scale(1.3); opacity: 1; }
+    50% { transform: scale(2); opacity: 0.8; }
+    100% { transform: scale(3); opacity: 0; }
+  }
+
+  /* ULTIMA - massive green explosion */
+  .spell-ultima {
+    font-size: 200px;
+    animation: ultimaBurst 0.5s ease-out, ultimaFade 3s ease-in 0.5s forwards;
+    text-shadow: 0 0 60px #22ff22, 0 0 120px #22ff22, 0 0 180px #00ff00, 0 0 240px #00aa00;
+  }
+  @keyframes ultimaBurst {
+    0% { transform: scale(0) rotate(0deg); opacity: 0; }
+    50% { transform: scale(2) rotate(180deg); opacity: 1; }
+    100% { transform: scale(1.5) rotate(360deg); opacity: 1; }
+  }
+  @keyframes ultimaFade {
+    0% { transform: scale(1.5); opacity: 1; }
+    100% { transform: scale(4); opacity: 0; }
+  }
+
+  /* FLARE - bright orange/red massive burst */
+  .spell-flare {
+    font-size: 180px;
+    animation: flareBurst 0.4s ease-out, flareFade 2s ease-in 0.4s forwards;
+    text-shadow: 0 0 50px #ff6600, 0 0 100px #ff4400, 0 0 150px #ff0000;
+  }
+  @keyframes flareBurst {
+    0% { transform: scale(0); opacity: 0; filter: brightness(3); }
+    100% { transform: scale(1.8); opacity: 1; filter: brightness(1.5); }
+  }
+  @keyframes flareFade {
+    0% { transform: scale(1.8); opacity: 1; }
+    100% { transform: scale(3); opacity: 0; }
+  }
+
+  /* GRAVITY - purple/black pulling effect */
+  .spell-gravity {
+    font-size: 160px;
+    animation: gravityPulse 2s ease-in-out forwards;
+    text-shadow: 0 0 40px #8800ff, 0 0 80px #6600cc, 0 0 120px #440088;
+  }
+  @keyframes gravityPulse {
+    0% { transform: scale(2); opacity: 0; }
+    30% { transform: scale(0.8); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 1; }
+    70% { transform: scale(0.6); opacity: 1; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  /* DOOMSDAY - dark apocalyptic */
+  .spell-doomsday {
+    font-size: 220px;
+    animation: doomRise 0.8s ease-out, doomFade 3s ease-in 0.8s forwards;
+    text-shadow: 0 0 60px #ff0000, 0 0 120px #880000, 0 0 180px #440000;
+    filter: saturate(1.5);
+  }
+  @keyframes doomRise {
+    0% { transform: scale(0) translateY(100px); opacity: 0; }
+    100% { transform: scale(1.5) translateY(0); opacity: 1; }
+  }
+  @keyframes doomFade {
+    0% { transform: scale(1.5); opacity: 1; }
+    50% { transform: scale(2.5); opacity: 0.8; }
+    100% { transform: scale(4); opacity: 0; }
+  }
+
+  /* BLIZZARD - icy blue */
+  .spell-blizzard {
+    font-size: 150px;
+    animation: blizzardSpin 0.5s ease-out, blizzardFade 2.5s ease-in 0.5s forwards;
+    text-shadow: 0 0 40px #00ffff, 0 0 80px #00ccff, 0 0 120px #0088ff;
+  }
+  @keyframes blizzardSpin {
+    0% { transform: scale(0) rotate(-360deg); opacity: 0; }
+    100% { transform: scale(1.4) rotate(0deg); opacity: 1; }
+  }
+  @keyframes blizzardFade {
+    0% { transform: scale(1.4); opacity: 1; }
+    100% { transform: scale(2.5); opacity: 0; filter: blur(10px); }
+  }
+
+  /* BIO - poison green bubbles */
+  .spell-bio {
+    font-size: 130px;
+    animation: bioBubble 3s ease-in-out forwards;
+    text-shadow: 0 0 30px #88ff00, 0 0 60px #66cc00, 0 0 90px #448800;
+  }
+  @keyframes bioBubble {
+    0% { transform: scale(0); opacity: 0; }
+    20% { transform: scale(1.2); opacity: 1; }
+    40% { transform: scale(1.0); opacity: 1; }
+    60% { transform: scale(1.3); opacity: 0.9; }
+    80% { transform: scale(1.1); opacity: 0.7; }
+    100% { transform: scale(1.5); opacity: 0; }
+  }
+
+  /* METEOR - fiery descent */
+  .spell-meteor {
+    font-size: 170px;
+    animation: meteorFall 0.6s ease-in, meteorExplode 2s ease-out 0.6s forwards;
+    text-shadow: 0 0 50px #ff4400, 0 0 100px #ff2200, 0 0 150px #cc0000;
+  }
+  @keyframes meteorFall {
+    0% { transform: translateY(-200px) scale(0.5); opacity: 0.5; }
+    100% { transform: translateY(0) scale(1.5); opacity: 1; }
+  }
+  @keyframes meteorExplode {
+    0% { transform: scale(1.5); opacity: 1; }
+    30% { transform: scale(2.5); opacity: 1; }
+    100% { transform: scale(4); opacity: 0; }
+  }
+
+  .magic-ring {
+    position: absolute;
+    border: 6px solid;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: ringExpand 1.5s ease-out forwards;
+  }
+
+  @keyframes ringExpand {
+    0% { transform: scale(0); opacity: 1; }
+    100% { transform: scale(5); opacity: 0; }
+  }
+
+  .gravity-ring {
+    animation: gravityRing 1.5s ease-in forwards;
+  }
+  @keyframes gravityRing {
+    0% { transform: scale(5); opacity: 0.3; }
+    100% { transform: scale(0); opacity: 1; }
+  }
+
+  .magic-particle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .trail-spark {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: sparkle 0.8s ease-out forwards;
+  }
+
+  @keyframes sparkle {
+    0% { opacity: 1; transform: scale(2); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(0); }
+  }
+
+  .cast-flash {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: flash 0.5s ease-out forwards;
+    filter: blur(30px);
+  }
+
+  @keyframes flash {
+    0% { transform: scale(0); opacity: 1; }
+    50% { transform: scale(2.5); opacity: 0.9; }
+    100% { transform: scale(4); opacity: 0; }
+  }
+
+  .ice-shard {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 30px solid;
+    pointer-events: none;
+    animation: shardFly 1s ease-out forwards;
+  }
+  @keyframes shardFly {
+    0% { opacity: 1; transform: rotate(0deg) scale(1); }
+    100% { opacity: 0; transform: rotate(720deg) scale(0); }
+  }
+
+  .poison-bubble {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: bubbleFloat 2s ease-out forwards;
+  }
+  @keyframes bubbleFloat {
+    0% { opacity: 0.8; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-150px) scale(0.3); }
+  }
+
+  /* Staff */
+  .staff {
+    position: absolute;
+    right: 40px;
+    top: 80px;
+    transform-origin: bottom center;
+    animation: staffBob 16s ease-in-out infinite;
+    z-index: 5;
+  }
+
+  @keyframes staffBob {
+    0%, 100% { transform: rotate(-5deg); }
+    25% { transform: rotate(-8deg); }
+    50% { transform: rotate(-3deg); }
+    75% { transform: rotate(-10deg); }
+  }
+
+  .staff-shaft {
+    width: 18px;
+    height: 380px;
+    background: linear-gradient(90deg, #2a1a0a 0%, #5a3a1a 30%, #8b5a2b 50%, #5a3a1a 70%, #2a1a0a 100%);
+    border-radius: 8px;
+    box-shadow: 2px 4px 8px rgba(0,0,0,0.5);
+  }
+
+  .staff-orb {
+    position: absolute;
+    top: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 70px;
+    background: radial-gradient(circle at 30% 30%, #ff88ff, #aa22aa 40%, #660066 70%, #330033);
+    border-radius: 50%;
+    box-shadow:
+      0 0 30px #ff00ff,
+      0 0 60px #aa00aa,
+      0 0 90px #660066,
+      inset 0 0 20px rgba(255,255,255,0.3);
+    animation: orbPulse 3s ease-in-out infinite;
+  }
+
+  .staff-orb-glow {
+    position: absolute;
+    top: -70px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 110px;
+    background: radial-gradient(circle, rgba(255,0,255,0.4) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: orbGlow 2s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+
+  @keyframes orbPulse {
+    0%, 100% {
+      box-shadow: 0 0 30px #ff00ff, 0 0 60px #aa00aa, 0 0 90px #660066, inset 0 0 20px rgba(255,255,255,0.3);
+      transform: translateX(-50%) scale(1);
+    }
+    50% {
+      box-shadow: 0 0 50px #ff44ff, 0 0 90px #cc00cc, 0 0 130px #880088, inset 0 0 30px rgba(255,255,255,0.5);
+      transform: translateX(-50%) scale(1.1);
+    }
+  }
+
+  @keyframes orbGlow {
+    0% { opacity: 0.5; transform: translateX(-50%) scale(1); }
+    100% { opacity: 1; transform: translateX(-50%) scale(1.3); }
+  }
+
+  /* DARK magic spells */
+  .spell-dark {
+    font-size: 160px;
+    animation: darkSwirl 0.6s ease-out, darkFade 2.5s ease-in 0.6s forwards;
+    text-shadow: 0 0 40px #220044, 0 0 80px #110022, 0 0 120px #000000;
+    filter: brightness(0.7);
+  }
+  @keyframes darkSwirl {
+    0% { transform: scale(0) rotate(180deg); opacity: 0; filter: brightness(0); }
+    100% { transform: scale(1.4) rotate(0deg); opacity: 1; filter: brightness(0.7); }
+  }
+  @keyframes darkFade {
+    0% { transform: scale(1.4); opacity: 1; }
+    100% { transform: scale(2.5); opacity: 0; }
+  }
+
+  /* STOP/TIME magic */
+  .spell-stop {
+    font-size: 150px;
+    animation: stopFreeze 3s ease-in-out forwards;
+    text-shadow: 0 0 40px #ffff00, 0 0 80px #cccc00;
+  }
+  @keyframes stopFreeze {
+    0% { transform: scale(0) rotate(720deg); opacity: 0; }
+    30% { transform: scale(1.5) rotate(0deg); opacity: 1; }
+    70% { transform: scale(1.5) rotate(0deg); opacity: 1; }
+    100% { transform: scale(0) rotate(-720deg); opacity: 0; }
+  }
+
+  /* CURSE */
+  .spell-curse {
+    font-size: 140px;
+    animation: cursePulse 2.5s ease-in-out forwards;
+    text-shadow: 0 0 30px #880088, 0 0 60px #440044;
+    filter: hue-rotate(0deg);
+  }
+  @keyframes cursePulse {
+    0% { transform: scale(0); opacity: 0; filter: hue-rotate(0deg); }
+    25% { transform: scale(1.3); opacity: 1; filter: hue-rotate(60deg); }
+    50% { transform: scale(1.1); opacity: 1; filter: hue-rotate(120deg); }
+    75% { transform: scale(1.4); opacity: 0.8; filter: hue-rotate(180deg); }
+    100% { transform: scale(0.5); opacity: 0; filter: hue-rotate(360deg); }
+  }
+
+  /* SLEEP */
+  .spell-sleep {
+    font-size: 120px;
+    animation: sleepFloat 3s ease-in-out forwards;
+    text-shadow: 0 0 30px #8888ff, 0 0 60px #4444cc;
+  }
+  @keyframes sleepFloat {
+    0% { transform: scale(0) translateY(50px); opacity: 0; }
+    30% { transform: scale(1.2) translateY(0); opacity: 1; }
+    100% { transform: scale(0.8) translateY(-100px); opacity: 0; }
+  }
+
+  /* BREAK/STONE */
+  .spell-break {
+    font-size: 160px;
+    animation: breakShatter 2s ease-out forwards;
+    text-shadow: 0 0 30px #888888, 0 0 60px #666666;
+  }
+  @keyframes breakShatter {
+    0% { transform: scale(0); opacity: 0; }
+    20% { transform: scale(1.5); opacity: 1; }
+    40% { transform: scale(1.3) rotate(5deg); opacity: 1; }
+    60% { transform: scale(1.4) rotate(-5deg); opacity: 1; }
+    80% { transform: scale(1.2) rotate(0deg); opacity: 0.8; }
+    100% { transform: scale(2) rotate(0deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="mage-container">
+  <img class="mage" src="file:///home/struktured/Pictures/redblackmage-transparent.png" alt="Red Black Mage">
+</div>
+
+<script>
+// Spell definitions with their visual styles
+const spellTypes = [
+  // Fire magic
+  { name: 'Fire', emoji: '🔥', class: 'spell-burst', color: '#ff6b6b', particles: 'normal' },
+  { name: 'Fire2', emoji: '🔥', class: 'spell-burst', color: '#ff4400', particles: 'normal' },
+  { name: 'Fire3', emoji: '🔥', class: 'spell-flare', color: '#ff2200', particles: 'normal' },
+  // Ice magic
+  { name: 'Blizzard', emoji: '❄️', class: 'spell-blizzard', color: '#00ffff', particles: 'ice' },
+  { name: 'Blizzard2', emoji: '❄️', class: 'spell-blizzard', color: '#00ccff', particles: 'ice' },
+  { name: 'Blizzard3', emoji: '🌨️', class: 'spell-blizzard', color: '#88ffff', particles: 'ice' },
+  // Lightning magic
+  { name: 'Thunder', emoji: '⚡', class: 'spell-burst', color: '#ffe66d', particles: 'normal' },
+  { name: 'Thunder2', emoji: '⚡', class: 'spell-burst', color: '#ffcc00', particles: 'normal' },
+  { name: 'Thunder3', emoji: '⚡', class: 'spell-flare', color: '#ffff00', particles: 'normal' },
+  // Gravity/Space magic
+  { name: 'Gravity', emoji: '🕳️', class: 'spell-gravity', color: '#8800ff', particles: 'gravity' },
+  { name: 'Demi', emoji: '⬛', class: 'spell-gravity', color: '#6600aa', particles: 'gravity' },
+  // Explosive magic
+  { name: 'Flare', emoji: '💥', class: 'spell-flare', color: '#ff6600', particles: 'normal' },
+  { name: 'Ultima', emoji: '✨', class: 'spell-ultima', color: '#22ff22', particles: 'ultima' },
+  { name: 'Holy', emoji: '🌟', class: 'spell-ultima', color: '#ffffff', particles: 'holy' },
+  // Apocalyptic magic
+  { name: 'Doomsday', emoji: '☄️', class: 'spell-doomsday', color: '#880000', particles: 'doom' },
+  { name: 'Meteor', emoji: '☄️', class: 'spell-meteor', color: '#ff4400', particles: 'meteor' },
+  { name: 'Comet', emoji: '💫', class: 'spell-meteor', color: '#ff88ff', particles: 'normal' },
+  { name: 'Quake', emoji: '🌋', class: 'spell-doomsday', color: '#884400', particles: 'doom' },
+  { name: 'Tornado', emoji: '🌀', class: 'spell-burst', color: '#88ccff', particles: 'normal' },
+  // Poison/Bio magic
+  { name: 'Bio', emoji: '☠️', class: 'spell-bio', color: '#88ff00', particles: 'poison' },
+  { name: 'Bio2', emoji: '☠️', class: 'spell-bio', color: '#66cc00', particles: 'poison' },
+  { name: 'Bio3', emoji: '☠️', class: 'spell-doomsday', color: '#44aa00', particles: 'poison' },
+  { name: 'Poison', emoji: '🧪', class: 'spell-bio', color: '#aaff00', particles: 'poison' },
+  // BLACK MAGIC - Dark spells
+  { name: 'Dark', emoji: '🌑', class: 'spell-dark', color: '#220044', particles: 'gravity' },
+  { name: 'Darkra', emoji: '🌑', class: 'spell-dark', color: '#330066', particles: 'gravity' },
+  { name: 'Darkga', emoji: '🌚', class: 'spell-doomsday', color: '#110022', particles: 'doom' },
+  { name: 'Death', emoji: '💀', class: 'spell-gravity', color: '#440044', particles: 'gravity' },
+  { name: 'Doom', emoji: '⏳', class: 'spell-curse', color: '#660066', particles: 'gravity' },
+  { name: 'Curse', emoji: '🔮', class: 'spell-curse', color: '#880088', particles: 'normal' },
+  // Drain/Absorb magic
+  { name: 'Drain', emoji: '🩸', class: 'spell-bio', color: '#cc0044', particles: 'poison' },
+  { name: 'Osmose', emoji: '💜', class: 'spell-burst', color: '#aa44ff', particles: 'normal' },
+  { name: 'Absorb', emoji: '💫', class: 'spell-gravity', color: '#aa00aa', particles: 'gravity' },
+  // Status magic
+  { name: 'Sleep', emoji: '💤', class: 'spell-sleep', color: '#8888ff', particles: 'normal' },
+  { name: 'Sleepga', emoji: '😴', class: 'spell-sleep', color: '#6666cc', particles: 'normal' },
+  { name: 'Stop', emoji: '⏱️', class: 'spell-stop', color: '#ffff00', particles: 'normal' },
+  { name: 'Slow', emoji: '🐢', class: 'spell-stop', color: '#cccc00', particles: 'normal' },
+  { name: 'Break', emoji: '🗿', class: 'spell-break', color: '#888888', particles: 'normal' },
+  { name: 'Stone', emoji: '🪨', class: 'spell-break', color: '#666666', particles: 'normal' },
+  { name: 'Blind', emoji: '👁️‍🗨️', class: 'spell-dark', color: '#333333', particles: 'normal' },
+  { name: 'Silence', emoji: '🤫', class: 'spell-curse', color: '#444488', particles: 'normal' },
+  { name: 'Confuse', emoji: '😵‍💫', class: 'spell-curse', color: '#ff88ff', particles: 'normal' },
+  { name: 'Berserk', emoji: '😤', class: 'spell-flare', color: '#ff0000', particles: 'normal' },
+  { name: 'Frog', emoji: '🐸', class: 'spell-bio', color: '#00aa44', particles: 'poison' },
+  // Ultimate black magic
+  { name: 'Apocalypse', emoji: '🌋', class: 'spell-doomsday', color: '#440000', particles: 'doom' },
+  { name: 'Shadowflare', emoji: '🔥', class: 'spell-dark', color: '#440066', particles: 'doom' },
+  { name: 'Void', emoji: '⚫', class: 'spell-gravity', color: '#000000', particles: 'gravity' },
+];
+
+function castSpell() {
+  const mageContainer = document.querySelector('.mage-container');
+  const mageRect = mageContainer.getBoundingClientRect();
+  const startX = mageRect.left + mageRect.width / 2;
+  const startY = mageRect.top + 100;
+
+  // Random target ANYWHERE on the entire 4K scene
+  const targetX = Math.random() * 3600 + 100;
+  const targetY = Math.random() * 1900 + 100;
+
+  // Pick random spell
+  const spell = spellTypes[Math.floor(Math.random() * spellTypes.length)];
+  const color = spell.color;
+
+  // Big flash at mage position
+  const flash = document.createElement('div');
+  flash.className = 'cast-flash';
+  flash.style.left = (startX - 100) + 'px';
+  flash.style.top = (startY - 100) + 'px';
+  flash.style.background = color;
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 500);
+
+  // Trail particles from mage to target
+  const trailCount = 20;
+  for (let i = 0; i < trailCount; i++) {
+    setTimeout(() => {
+      const spark = document.createElement('div');
+      spark.className = 'trail-spark';
+      const progress = i / trailCount;
+      const curve = Math.sin(progress * Math.PI) * 100;
+      const x = startX + (targetX - startX) * progress + (Math.random() - 0.5) * 60 + curve;
+      const y = startY + (targetY - startY) * progress + (Math.random() - 0.5) * 60 - curve * 0.5;
+      spark.style.left = x + 'px';
+      spark.style.top = y + 'px';
+      spark.style.background = color;
+      spark.style.boxShadow = `0 0 20px ${color}, 0 0 40px ${color}`;
+      document.body.appendChild(spark);
+      setTimeout(() => spark.remove(), 800);
+    }, i * 25);
+  }
+
+  // Spell burst at target
+  setTimeout(() => {
+    // Main spell emoji with appropriate animation class
+    const spellEl = document.createElement('div');
+    spellEl.className = spell.class;
+    spellEl.textContent = spell.emoji;
+    spellEl.style.left = targetX + 'px';
+    spellEl.style.top = targetY + 'px';
+    spellEl.style.position = 'absolute';
+    spellEl.style.pointerEvents = 'none';
+    spellEl.style.color = color;
+    document.body.appendChild(spellEl);
+    setTimeout(() => spellEl.remove(), 4000);
+
+    // Particle effects based on spell type
+    if (spell.particles === 'gravity') {
+      // Gravity: rings collapse inward
+      for (let r = 0; r < 4; r++) {
+        setTimeout(() => {
+          const ring = document.createElement('div');
+          ring.className = 'magic-ring gravity-ring';
+          ring.style.left = (targetX + 60) + 'px';
+          ring.style.top = (targetY + 60) + 'px';
+          ring.style.width = '80px';
+          ring.style.height = '80px';
+          ring.style.marginLeft = '-40px';
+          ring.style.marginTop = '-40px';
+          ring.style.borderColor = color;
+          ring.style.boxShadow = `0 0 30px ${color}`;
+          document.body.appendChild(ring);
+          setTimeout(() => ring.remove(), 1500);
+        }, r * 200);
+      }
+    } else if (spell.particles === 'ice') {
+      // Ice: shards fly outward
+      for (let s = 0; s < 12; s++) {
+        const shard = document.createElement('div');
+        shard.className = 'ice-shard';
+        const angle = (s / 12) * Math.PI * 2;
+        const dist = 80 + Math.random() * 100;
+        shard.style.left = (targetX + 60) + 'px';
+        shard.style.top = (targetY + 60) + 'px';
+        shard.style.borderBottomColor = color;
+        shard.style.transform = `rotate(${angle}rad)`;
+        shard.style.transition = 'all 1s ease-out';
+        document.body.appendChild(shard);
+        requestAnimationFrame(() => {
+          shard.style.left = (targetX + 60 + Math.cos(angle) * dist) + 'px';
+          shard.style.top = (targetY + 60 + Math.sin(angle) * dist) + 'px';
+        });
+        setTimeout(() => shard.remove(), 1000);
+      }
+    } else if (spell.particles === 'poison') {
+      // Poison: bubbles float up
+      for (let b = 0; b < 15; b++) {
+        setTimeout(() => {
+          const bubble = document.createElement('div');
+          bubble.className = 'poison-bubble';
+          bubble.style.left = (targetX + 40 + (Math.random() - 0.5) * 100) + 'px';
+          bubble.style.top = (targetY + 60) + 'px';
+          bubble.style.background = color;
+          bubble.style.boxShadow = `0 0 15px ${color}`;
+          document.body.appendChild(bubble);
+          setTimeout(() => bubble.remove(), 2000);
+        }, b * 100);
+      }
+    } else if (spell.particles === 'ultima' || spell.particles === 'holy') {
+      // Ultima/Holy: massive expanding rings + particles
+      for (let r = 0; r < 6; r++) {
+        setTimeout(() => {
+          const ring = document.createElement('div');
+          ring.className = 'magic-ring';
+          ring.style.left = (targetX + 80) + 'px';
+          ring.style.top = (targetY + 80) + 'px';
+          ring.style.width = '100px';
+          ring.style.height = '100px';
+          ring.style.marginLeft = '-50px';
+          ring.style.marginTop = '-50px';
+          ring.style.borderColor = color;
+          ring.style.boxShadow = `0 0 40px ${color}, inset 0 0 30px ${color}`;
+          document.body.appendChild(ring);
+          setTimeout(() => ring.remove(), 1500);
+        }, r * 100);
+      }
+      // Extra particles
+      for (let p = 0; p < 24; p++) {
+        const particle = document.createElement('div');
+        particle.className = 'magic-particle';
+        const angle = (p / 24) * Math.PI * 2;
+        const dist = 150 + Math.random() * 200;
+        particle.style.left = (targetX + 80) + 'px';
+        particle.style.top = (targetY + 80) + 'px';
+        particle.style.background = color;
+        particle.style.boxShadow = `0 0 25px ${color}, 0 0 50px ${color}`;
+        particle.style.transition = 'all 1.2s ease-out';
+        particle.style.animation = 'none';
+        document.body.appendChild(particle);
+        requestAnimationFrame(() => {
+          particle.style.left = (targetX + 80 + Math.cos(angle) * dist) + 'px';
+          particle.style.top = (targetY + 80 + Math.sin(angle) * dist) + 'px';
+          particle.style.opacity = '0';
+        });
+        setTimeout(() => particle.remove(), 1200);
+      }
+    } else if (spell.particles === 'doom' || spell.particles === 'meteor') {
+      // Doom/Meteor: ground impact waves
+      for (let r = 0; r < 5; r++) {
+        setTimeout(() => {
+          const ring = document.createElement('div');
+          ring.className = 'magic-ring';
+          ring.style.left = (targetX + 80) + 'px';
+          ring.style.top = (targetY + 100) + 'px';
+          ring.style.width = '120px';
+          ring.style.height = '40px';
+          ring.style.marginLeft = '-60px';
+          ring.style.marginTop = '-20px';
+          ring.style.borderColor = color;
+          ring.style.boxShadow = `0 0 40px ${color}`;
+          document.body.appendChild(ring);
+          setTimeout(() => ring.remove(), 1500);
+        }, r * 150);
+      }
+    } else {
+      // Normal: standard expanding rings and particles
+      for (let r = 0; r < 4; r++) {
+        setTimeout(() => {
+          const ring = document.createElement('div');
+          ring.className = 'magic-ring';
+          ring.style.left = (targetX + 50) + 'px';
+          ring.style.top = (targetY + 50) + 'px';
+          ring.style.width = '60px';
+          ring.style.height = '60px';
+          ring.style.marginLeft = '-30px';
+          ring.style.marginTop = '-30px';
+          ring.style.borderColor = color;
+          ring.style.boxShadow = `0 0 30px ${color}, inset 0 0 20px ${color}`;
+          document.body.appendChild(ring);
+          setTimeout(() => ring.remove(), 1500);
+        }, r * 120);
+      }
+      for (let p = 0; p < 16; p++) {
+        const particle = document.createElement('div');
+        particle.className = 'magic-particle';
+        const angle = (p / 16) * Math.PI * 2;
+        const dist = 100 + Math.random() * 150;
+        particle.style.left = (targetX + 60) + 'px';
+        particle.style.top = (targetY + 60) + 'px';
+        particle.style.background = color;
+        particle.style.boxShadow = `0 0 20px ${color}, 0 0 40px ${color}`;
+        particle.style.transition = 'all 1s ease-out';
+        particle.style.animation = 'none';
+        document.body.appendChild(particle);
+        requestAnimationFrame(() => {
+          particle.style.left = (targetX + 60 + Math.cos(angle) * dist) + 'px';
+          particle.style.top = (targetY + 60 + Math.sin(angle) * dist) + 'px';
+          particle.style.opacity = '0';
+        });
+        setTimeout(() => particle.remove(), 1000);
+      }
+    }
+  }, trailCount * 25 + 100);
+}
+
+// Cast spell every 12-25 seconds
+function scheduleNextSpell() {
+  const delay = 12000 + Math.random() * 13000;
+  setTimeout(() => {
+    castSpell();
+    scheduleNextSpell();
+  }, delay);
+}
+
+// First spell after 4 seconds
+setTimeout(() => {
+  castSpell();
+  scheduleNextSpell();
+}, 4000);
+</script>
+</body>
+</html>

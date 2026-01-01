@@ -101,10 +101,38 @@ def obs_update_text(source_name: str, text: str) -> str:
 
 @mcp.tool()
 def obs_remove_source(source_name: str) -> str:
-    """Remove a source from OBS."""
+    """Remove a source completely from OBS (from all scenes and input list)."""
     client = get_obs_client()
     client.remove_source(source_name)
     return f"Removed source: {source_name}"
+
+
+@mcp.tool()
+def obs_list_inputs() -> list[dict]:
+    """List all inputs/sources registered in OBS (even orphaned ones not in any scene)."""
+    client = get_obs_client()
+    return client.list_inputs()
+
+
+@mcp.tool()
+def obs_cleanup_inputs(prefix: str = "mcp-") -> str:
+    """
+    Remove all inputs matching a prefix. Useful for cleaning up MCP-created sources.
+
+    Args:
+        prefix: Only remove inputs whose names start with this prefix (default: "mcp-")
+    """
+    client = get_obs_client()
+    inputs = client.list_inputs()
+    removed = []
+    for inp in inputs:
+        if inp["name"].startswith(prefix):
+            try:
+                client.remove_source(inp["name"])
+                removed.append(inp["name"])
+            except Exception:
+                pass
+    return f"Removed {len(removed)} sources: {removed}"
 
 
 @mcp.tool()

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; }
+  body {
+    background: rgba(0,0,0,0);
+    overflow: hidden;
+    width: 1920px;
+    height: 1080px;
+  }
+  .cat {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    transition: left 2s ease-in-out, top 2s ease-in-out;
+  }
+</style>
+</head>
+<body>
+<img class="cat" src="cat.gif">
+<script>
+  const cat = document.querySelector('.cat');
+  cat.style.left = '810px';
+  cat.style.top = '390px';
+
+  function moveRandomly() {
+    const x = Math.floor(Math.random() * 1620);
+    const y = Math.floor(Math.random() * 780);
+    cat.style.left = x + 'px';
+    cat.style.top = y + 'px';
+  }
+
+  setInterval(moveRandomly, 2500);
+</script>
+</body>
+</html>

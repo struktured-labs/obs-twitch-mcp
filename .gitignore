@@ -7,3 +7,5 @@ tmp/
 *.egg-info/
 dist/
 build/
+logs/
+.twitch_token.json

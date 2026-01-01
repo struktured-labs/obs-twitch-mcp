@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; }
+  body {
+    background: transparent;
+    width: 1920px;
+    height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .retro-text {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 36px;
+    color: #00ff00;
+    text-shadow:
+      4px 4px 0px #003300,
+      -2px -2px 0px #00aa00,
+      0 0 20px #00ff00;
+    text-align: center;
+    line-height: 1.6;
+    image-rendering: pixelated;
+    -webkit-font-smoothing: none;
+    animation: flicker 0.15s infinite alternate;
+  }
+  @keyframes flicker {
+    from { opacity: 1; }
+    to { opacity: 0.92; }
+  }
+</style>
+</head>
+<body>
+<div class="retro-text">
+  VIBE CODING STREAM
+</div>
+</body>
+</html>

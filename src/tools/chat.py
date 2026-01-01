@@ -2,7 +2,10 @@
 Twitch chat interaction tools.
 """
 
-from ..app import mcp, get_twitch_client
+from datetime import datetime
+
+from ..app import mcp, get_twitch_client, refresh_twitch_client
+from ..utils import chat_logger
 
 
 @mcp.tool()
@@ -40,3 +43,48 @@ def twitch_get_recent_messages(count: int = 10) -> list[dict]:
         }
         for m in messages
     ]
+
+
+@mcp.tool()
+def twitch_get_chat_history(date: str = "", limit: int = 100) -> list[dict]:
+    """
+    Get chat history from saved logs.
+
+    Args:
+        date: Date in YYYY-MM-DD format. Defaults to today.
+        limit: Maximum number of messages to return.
+
+    Returns:
+        List of chat messages with timestamp, username, message, etc.
+    """
+    if date:
+        try:
+            dt = datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            return [{"error": "Invalid date format. Use YYYY-MM-DD"}]
+    else:
+        dt = None
+
+    return chat_logger.read_logs(dt, limit)
+
+
+@mcp.tool()
+def twitch_list_chat_log_dates() -> list[str]:
+    """
+    List all available chat log dates.
+
+    Returns:
+        List of dates (YYYY-MM-DD) that have chat logs, newest first.
+    """
+    return chat_logger.get_available_dates()
+
+
+@mcp.tool()
+def twitch_refresh_token() -> str:
+    """
+    Refresh the Twitch client to pick up a new token.
+
+    Call this after running auth.py to update the token without restarting.
+    """
+    client = refresh_twitch_client()
+    return f"Twitch client refreshed. Channel: {client.channel}"
