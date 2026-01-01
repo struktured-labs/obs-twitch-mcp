@@ -73,6 +73,15 @@ class OBSClient:
             for item in items.scene_items
         ]
 
+    def get_scene_item_transform(self, scene_name: str, item_id: int) -> dict:
+        """Get the transform (position, size, etc.) of a scene item."""
+        result = self.client.get_scene_item_transform(scene_name, item_id)
+        return result.scene_item_transform
+
+    def set_scene_item_enabled(self, scene_name: str, item_id: int, enabled: bool) -> None:
+        """Enable or disable a scene item (show/hide)."""
+        self.client.set_scene_item_enabled(scene_name, item_id, enabled)
+
     def create_text_source(
         self,
         scene_name: str,
@@ -102,8 +111,32 @@ class OBSClient:
         self.client.set_input_settings(source_name, {"text": text}, True)
 
     def remove_source(self, source_name: str) -> None:
-        """Remove a source."""
-        self.client.remove_input(source_name)
+        """Remove a source completely from OBS (from all scenes and the input list)."""
+        # First, remove the scene item from ALL scenes that reference it
+        scenes = self.list_scenes()
+        for scene in scenes:
+            try:
+                item_id = self.client.get_scene_item_id(scene, source_name).scene_item_id
+                self.client.remove_scene_item(scene, item_id)
+            except Exception:
+                pass  # Source not in this scene
+
+        # Now remove the input itself
+        try:
+            self.client.remove_input(source_name)
+        except Exception:
+            pass  # Input may already be gone if it was only in one scene
+
+    def list_inputs(self) -> list[dict]:
+        """List all inputs (sources) in OBS."""
+        result = self.client.get_input_list()
+        return [
+            {
+                "name": inp["inputName"],
+                "kind": inp["inputKind"],
+            }
+            for inp in result.inputs
+        ]
 
     def set_scene_item_transform(
         self,

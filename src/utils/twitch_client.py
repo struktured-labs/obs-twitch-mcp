@@ -8,6 +8,8 @@ import ssl
 from dataclasses import dataclass, field
 from typing import Callable
 
+from . import chat_logger
+
 
 @dataclass
 class ChatMessage:
@@ -73,6 +75,23 @@ class TwitchClient:
     def get_recent_messages(self, count: int = 10) -> list[ChatMessage]:
         """Get recent chat messages (from cache)."""
         return self._chat_messages[-count:]
+
+    def receive_message(self, msg: ChatMessage) -> None:
+        """Receive a chat message: cache it, log it, and notify handlers."""
+        # Add to in-memory cache (keep last 500)
+        self._chat_messages.append(msg)
+        if len(self._chat_messages) > 500:
+            self._chat_messages = self._chat_messages[-500:]
+
+        # Persist to log file
+        chat_logger.log_message(msg)
+
+        # Notify handlers
+        for handler in self._message_handlers:
+            try:
+                handler(msg)
+            except Exception:
+                pass  # Don't let handler errors break the chain
 
     def add_message_handler(self, handler: Callable[[ChatMessage], None]) -> None:
         """Add a handler for incoming chat messages."""

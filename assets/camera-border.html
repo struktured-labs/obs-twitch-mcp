@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: transparent;
+    width: 925px;
+    height: 698px;
+    overflow: hidden;
+  }
+
+  .border-frame {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* Retro pixel-art style border */
+  .retro-border {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 8px solid transparent;
+    border-image: linear-gradient(
+      135deg,
+      #8b4513 0%,
+      #d2691e 15%,
+      #f4a460 30%,
+      #daa520 50%,
+      #f4a460 70%,
+      #d2691e 85%,
+      #8b4513 100%
+    ) 1;
+    box-shadow:
+      inset 0 0 0 4px #2a1a0a,
+      inset 0 0 0 6px #4a3520,
+      0 0 0 2px #1a0a00,
+      0 0 20px rgba(139, 69, 19, 0.5);
+  }
+
+  /* Corner decorations - pixel art style */
+  .corner {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #daa520 0%, #8b4513 100%);
+    box-shadow:
+      inset 2px 2px 0 #f4a460,
+      inset -2px -2px 0 #4a3520;
+  }
+
+  .corner-tl { top: -4px; left: -4px; }
+  .corner-tr { top: -4px; right: -4px; }
+  .corner-bl { bottom: -4px; left: -4px; }
+  .corner-br { bottom: -4px; right: -4px; }
+
+  /* Subtle inner glow */
+  .inner-glow {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    border: 2px solid rgba(255, 215, 0, 0.2);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  /* Pixel corner accents */
+  .pixel-accent {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #daa520;
+    box-shadow: 0 0 4px #ffd700;
+  }
+
+  .pixel-accent.tl-1 { top: 24px; left: 4px; }
+  .pixel-accent.tl-2 { top: 4px; left: 24px; }
+  .pixel-accent.tr-1 { top: 24px; right: 4px; }
+  .pixel-accent.tr-2 { top: 4px; right: 24px; }
+  .pixel-accent.bl-1 { bottom: 24px; left: 4px; }
+  .pixel-accent.bl-2 { bottom: 4px; left: 24px; }
+  .pixel-accent.br-1 { bottom: 24px; right: 4px; }
+  .pixel-accent.br-2 { bottom: 4px; right: 24px; }
+
+  /* Optional subtle scanlines effect */
+  .scanlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div class="border-frame">
+  <div class="retro-border"></div>
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+  <div class="pixel-accent tl-1"></div>
+  <div class="pixel-accent tl-2"></div>
+  <div class="pixel-accent tr-1"></div>
+  <div class="pixel-accent tr-2"></div>
+  <div class="pixel-accent bl-1"></div>
+  <div class="pixel-accent bl-2"></div>
+  <div class="pixel-accent br-1"></div>
+  <div class="pixel-accent br-2"></div>
+  <div class="inner-glow"></div>
+</div>
+</body>
+</html>
