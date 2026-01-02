@@ -182,11 +182,13 @@ class TwitchClient:
 
         # Ban the user
         headers["Content-Type"] = "application/json"
-        httpx.post(
+        ban_resp = httpx.post(
             f"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={self.user_id}&moderator_id={self.user_id}",
             headers=headers,
             json={"data": {"user_id": target_user_id, "reason": reason}},
         )
+        if ban_resp.status_code >= 400:
+            raise ValueError(f"Ban failed: {ban_resp.status_code} - {ban_resp.text}")
 
     def timeout_user(self, username: str, duration: int = 600, reason: str = "") -> None:
         """Timeout a user from chat."""

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0f0f23;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Press Start 2P', monospace;
+    image-rendering: pixelated;
+  }
+
+  /* CRT Scanlines */
+  .scanlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.15),
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* CRT Screen curve effect */
+  .crt-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.3) 90%);
+    pointer-events: none;
+    z-index: 99;
+  }
+
+  /* Pixel grid background */
+  .pixel-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+      linear-gradient(rgba(57, 255, 20, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(57, 255, 20, 0.03) 1px, transparent 1px);
+    background-size: 8px 8px;
+  }
+
+  /* Retro border frame */
+  .retro-frame {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    border: 8px solid #39ff14;
+    box-shadow:
+      inset 0 0 0 4px #0f0f23,
+      inset 0 0 0 8px #00d4ff,
+      0 0 20px rgba(57, 255, 20, 0.3),
+      0 0 40px rgba(0, 212, 255, 0.2);
+    animation: borderPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes borderPulse {
+    0%, 100% {
+      box-shadow:
+        inset 0 0 0 4px #0f0f23,
+        inset 0 0 0 8px #00d4ff,
+        0 0 20px rgba(57, 255, 20, 0.3),
+        0 0 40px rgba(0, 212, 255, 0.2);
+    }
+    50% {
+      box-shadow:
+        inset 0 0 0 4px #0f0f23,
+        inset 0 0 0 8px #00d4ff,
+        0 0 40px rgba(57, 255, 20, 0.6),
+        0 0 80px rgba(0, 212, 255, 0.4);
+    }
+  }
+
+  /* Corner decorations */
+  .corner {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    z-index: 50;
+  }
+  .corner-tl { top: 40px; left: 40px; border-top: 8px solid #ff6b9d; border-left: 8px solid #ff6b9d; }
+  .corner-tr { top: 40px; right: 40px; border-top: 8px solid #ff6b9d; border-right: 8px solid #ff6b9d; }
+  .corner-bl { bottom: 40px; left: 40px; border-bottom: 8px solid #ff6b9d; border-left: 8px solid #ff6b9d; }
+  .corner-br { bottom: 40px; right: 40px; border-bottom: 8px solid #ff6b9d; border-right: 8px solid #ff6b9d; }
+
+  /* Main container */
+  .container {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+  }
+
+  /* Pixel art console icon */
+  .console-icon {
+    width: 120px;
+    height: 80px;
+    margin: 0 auto 50px;
+    position: relative;
+    background: #444;
+    border: 4px solid #666;
+    border-radius: 8px;
+    animation: consoleBob 1s ease-in-out infinite;
+  }
+
+  .console-icon::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    bottom: 20px;
+    background: #39ff14;
+    box-shadow: 0 0 20px #39ff14;
+    animation: screenFlicker 0.1s infinite;
+  }
+
+  .console-icon::after {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 8px;
+    background: linear-gradient(90deg, #ff6b9d 25%, transparent 25%, transparent 50%, #00d4ff 50%, #00d4ff 75%, transparent 75%);
+  }
+
+  @keyframes consoleBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  @keyframes screenFlicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.97; }
+  }
+
+  /* Title with retro text effect */
+  .title {
+    font-size: 48px;
+    color: #39ff14;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    margin-bottom: 20px;
+    text-shadow:
+      4px 4px 0 #006400,
+      -2px -2px 0 #00ff00,
+      0 0 20px #39ff14;
+    animation: titleBlink 3s step-end infinite;
+  }
+
+  @keyframes titleBlink {
+    0%, 90%, 100% { opacity: 1; }
+    92%, 94%, 96% { opacity: 0.8; }
+  }
+
+  /* Subtitle */
+  .subtitle {
+    font-size: 18px;
+    color: #00d4ff;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    margin-bottom: 60px;
+    text-shadow: 2px 2px 0 #004466;
+    animation: colorCycle 4s ease-in-out infinite;
+  }
+
+  @keyframes colorCycle {
+    0%, 100% { color: #00d4ff; text-shadow: 2px 2px 0 #004466; }
+    33% { color: #ff6b9d; text-shadow: 2px 2px 0 #662233; }
+    66% { color: #ffff00; text-shadow: 2px 2px 0 #666600; }
+  }
+
+  /* Retro badge */
+  .ai-badge {
+    display: inline-block;
+    background: #1a1a2e;
+    border: 4px solid #ff6b9d;
+    padding: 16px 32px;
+    margin-bottom: 50px;
+    position: relative;
+    animation: badgeGlow 1.5s ease-in-out infinite;
+  }
+
+  .ai-badge::before,
+  .ai-badge::after {
+    content: '>';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ff6b9d;
+    font-size: 20px;
+    animation: arrowBlink 0.5s step-end infinite;
+  }
+
+  .ai-badge::before { left: -30px; }
+  .ai-badge::after { right: -30px; content: '<'; }
+
+  @keyframes badgeGlow {
+    0%, 100% { box-shadow: 0 0 10px #ff6b9d; }
+    50% { box-shadow: 0 0 30px #ff6b9d, 0 0 60px rgba(255, 107, 157, 0.5); }
+  }
+
+  @keyframes arrowBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .ai-badge-text {
+    font-size: 16px;
+    color: #fff;
+    letter-spacing: 2px;
+  }
+
+  /* Features with pixel icons */
+  .features {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 60px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #aaa;
+    font-size: 10px;
+    padding: 8px 16px;
+    border: 2px solid #444;
+    background: rgba(0,0,0,0.5);
+    animation: featureSlide 2s ease-in-out infinite;
+  }
+
+  .feature:nth-child(1) { animation-delay: 0s; border-color: #39ff14; color: #39ff14; }
+  .feature:nth-child(2) { animation-delay: 0.2s; border-color: #00d4ff; color: #00d4ff; }
+  .feature:nth-child(3) { animation-delay: 0.4s; border-color: #ff6b9d; color: #ff6b9d; }
+  .feature:nth-child(4) { animation-delay: 0.6s; border-color: #ffff00; color: #ffff00; }
+
+  @keyframes featureSlide {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  .feature-icon {
+    font-size: 16px;
+  }
+
+  /* Loading bar - retro RPG style */
+  .loading-container {
+    width: 400px;
+    margin: 0 auto;
+  }
+
+  .loading-label {
+    font-size: 12px;
+    color: #39ff14;
+    margin-bottom: 10px;
+    text-align: left;
+  }
+
+  .loading-bar {
+    height: 24px;
+    background: #1a1a2e;
+    border: 4px solid #39ff14;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .loading-fill {
+    height: 100%;
+    background: repeating-linear-gradient(
+      90deg,
+      #39ff14 0px,
+      #39ff14 8px,
+      #00aa00 8px,
+      #00aa00 16px
+    );
+    animation: loadingAnim 3s ease-in-out infinite;
+    box-shadow: 0 0 10px #39ff14;
+  }
+
+  @keyframes loadingAnim {
+    0% { width: 0%; }
+    50% { width: 80%; }
+    100% { width: 100%; }
+  }
+
+  .loading-text {
+    font-size: 10px;
+    color: #666;
+    margin-top: 10px;
+  }
+
+  /* Countdown Timer */
+  .countdown-container {
+    margin-bottom: 40px;
+  }
+
+  .countdown-label {
+    font-size: 14px;
+    color: #ff6b9d;
+    margin-bottom: 15px;
+    letter-spacing: 4px;
+  }
+
+  .countdown {
+    font-size: 72px;
+    color: #00d4ff;
+    text-shadow:
+      4px 4px 0 #004466,
+      0 0 30px #00d4ff,
+      0 0 60px rgba(0, 212, 255, 0.5);
+    letter-spacing: 8px;
+    animation: countdownPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes countdownPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
+
+  .countdown-colon {
+    animation: colonBlink 1s step-end infinite;
+  }
+
+  @keyframes colonBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Floating pixels */
+  .pixel {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    animation: pixelFloat 6s ease-in-out infinite;
+  }
+
+  @keyframes pixelFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
+    50% { transform: translateY(-50px) rotate(180deg); opacity: 1; }
+  }
+
+  /* Bottom brand */
+  .claude-brand {
+    position: absolute;
+    bottom: 50px;
+    font-size: 10px;
+    color: #666;
+    letter-spacing: 2px;
+  }
+
+  .claude-brand a {
+    color: #39ff14;
+    text-decoration: none;
+  }
+
+  /* Stars background */
+  .star {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: #fff;
+    animation: starTwinkle 2s ease-in-out infinite;
+  }
+
+  @keyframes starTwinkle {
+    0%, 100% { opacity: 0.2; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.5); }
+  }
+</style>
+</head>
+<body>
+
+<div class="pixel-bg"></div>
+<div class="scanlines"></div>
+<div class="crt-overlay"></div>
+<div class="retro-frame"></div>
+
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<script>
+// Create floating pixels
+const colors = ['#39ff14', '#00d4ff', '#ff6b9d', '#ffff00', '#ff6600'];
+for (let i = 0; i < 20; i++) {
+  const pixel = document.createElement('div');
+  pixel.className = 'pixel';
+  pixel.style.left = Math.random() * 100 + '%';
+  pixel.style.top = Math.random() * 100 + '%';
+  pixel.style.background = colors[Math.floor(Math.random() * colors.length)];
+  pixel.style.animationDelay = Math.random() * 6 + 's';
+  pixel.style.animationDuration = (4 + Math.random() * 4) + 's';
+  document.body.appendChild(pixel);
+}
+
+// Create stars
+for (let i = 0; i < 50; i++) {
+  const star = document.createElement('div');
+  star.className = 'star';
+  star.style.left = Math.random() * 100 + '%';
+  star.style.top = Math.random() * 100 + '%';
+  star.style.animationDelay = Math.random() * 2 + 's';
+  document.body.appendChild(star);
+}
+
+</script>
+
+<div class="container">
+  <div class="console-icon"></div>
+
+  <div class="title">Stream Starting</div>
+
+  <div class="subtitle">AI-Powered Stream</div>
+
+  <div class="countdown-container">
+    <div class="countdown-label">STARTING IN</div>
+    <div class="countdown" id="countdown">10<span class="countdown-colon">:</span>00</div>
+  </div>
+
+  <div class="ai-badge">
+    <span class="ai-badge-text">POWERED BY CLAUDE CODE</span>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <span>[OBS]</span>
+      <span>LIVE CONTROL</span>
+    </div>
+    <div class="feature">
+      <span>[CHAT]</span>
+      <span>AI INTEGRATION</span>
+    </div>
+    <div class="feature">
+      <span>[GFX]</span>
+      <span>DYNAMIC OVERLAYS</span>
+    </div>
+    <div class="feature">
+      <span>[NPC]</span>
+      <span>ANIMATED CHARS</span>
+    </div>
+  </div>
+
+  <div class="loading-container">
+    <div class="loading-label">> INITIALIZING SYSTEMS...</div>
+    <div class="loading-bar">
+      <div class="loading-fill"></div>
+    </div>
+    <div class="loading-text">PLEASE WAIT...</div>
+  </div>
+</div>
+
+<div class="claude-brand">
+  BUILT WITH CLAUDE CODE // <a href="https://github.com/struktured-labs/obs-twitch-mcp">OBS-TWITCH-MCP</a>
+</div>
+
+<script>
+// Countdown Timer - 10 minutes
+let totalSeconds = 10 * 60;
+const countdownEl = document.getElementById('countdown');
+
+function updateCountdown() {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  const minStr = minutes.toString().padStart(2, '0');
+  const secStr = seconds.toString().padStart(2, '0');
+
+  countdownEl.innerHTML = minStr + '<span class="countdown-colon">:</span>' + secStr;
+
+  if (totalSeconds > 0) {
+    totalSeconds--;
+  } else {
+    countdownEl.style.color = '#39ff14';
+    countdownEl.innerHTML = 'GO<span class="countdown-colon">!</span>GO';
+  }
+}
+
+setInterval(updateCountdown, 1000);
+updateCountdown();
+</script>
+
+</body>
+</html>
