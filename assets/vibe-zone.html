@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: transparent;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .vibe-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* Gradient overlay that pulses */
+  .gradient-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      45deg,
+      rgba(138, 43, 226, 0.15),
+      rgba(0, 191, 255, 0.15),
+      rgba(255, 20, 147, 0.15),
+      rgba(0, 255, 127, 0.15)
+    );
+    background-size: 400% 400%;
+    animation: gradientShift 8s ease infinite;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Floating particles */
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: float linear infinite;
+  }
+
+  @keyframes float {
+    0% {
+      transform: translateY(100vh) rotate(0deg);
+      opacity: 0;
+    }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% {
+      transform: translateY(-100px) rotate(720deg);
+      opacity: 0;
+    }
+  }
+
+  /* Wave effect at bottom */
+  .wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 150px;
+    background: linear-gradient(to top, rgba(138, 43, 226, 0.3), transparent);
+    animation: wave 3s ease-in-out infinite;
+  }
+
+  .wave:nth-child(2) {
+    animation-delay: -1s;
+    opacity: 0.5;
+  }
+
+  .wave:nth-child(3) {
+    animation-delay: -2s;
+    opacity: 0.3;
+  }
+
+  @keyframes wave {
+    0%, 100% { transform: translateX(0) translateY(0); }
+    50% { transform: translateX(-25%) translateY(-20px); }
+  }
+
+  /* Vibe text */
+  .vibe-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Arial Black', sans-serif;
+    font-size: 120px;
+    font-weight: bold;
+    color: transparent;
+    background: linear-gradient(90deg, #ff00ff, #00ffff, #ff00ff);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: textShine 2s linear infinite, textPulse 1s ease-in-out infinite;
+    text-shadow: 0 0 40px rgba(255, 0, 255, 0.5), 0 0 80px rgba(0, 255, 255, 0.3);
+    letter-spacing: 20px;
+  }
+
+  @keyframes textShine {
+    to { background-position: 200% center; }
+  }
+
+  @keyframes textPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.05); }
+  }
+
+  /* Stars/sparkles */
+  .star {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle 1s ease-in-out infinite;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.5); }
+  }
+
+  /* Countdown */
+  .countdown {
+    position: absolute;
+    bottom: 50px;
+    right: 50px;
+    font-family: 'Arial', sans-serif;
+    font-size: 48px;
+    color: rgba(255, 255, 255, 0.7);
+    text-shadow: 0 0 20px rgba(138, 43, 226, 0.8);
+  }
+</style>
+</head>
+<body>
+
+<div class="vibe-container">
+  <div class="gradient-overlay"></div>
+  <div class="wave"></div>
+  <div class="wave"></div>
+  <div class="wave"></div>
+  <div class="vibe-text">VIBE ZONE</div>
+  <div class="countdown" id="countdown">30</div>
+</div>
+
+<script>
+// Create floating particles
+const container = document.querySelector('.vibe-container');
+const colors = ['#ff00ff', '#00ffff', '#ff69b4', '#7b68ee', '#00ff7f', '#ffd700'];
+
+for (let i = 0; i < 50; i++) {
+  const particle = document.createElement('div');
+  particle.className = 'particle';
+  const size = 5 + Math.random() * 15;
+  const color = colors[Math.floor(Math.random() * colors.length)];
+
+  particle.style.width = size + 'px';
+  particle.style.height = size + 'px';
+  particle.style.left = Math.random() * 100 + '%';
+  particle.style.background = `radial-gradient(circle, ${color}, transparent)`;
+  particle.style.animationDuration = (5 + Math.random() * 10) + 's';
+  particle.style.animationDelay = Math.random() * 5 + 's';
+
+  container.appendChild(particle);
+}
+
+// Create stars
+for (let i = 0; i < 100; i++) {
+  const star = document.createElement('div');
+  star.className = 'star';
+  star.style.left = Math.random() * 100 + '%';
+  star.style.top = Math.random() * 100 + '%';
+  star.style.animationDelay = Math.random() * 2 + 's';
+  star.style.animationDuration = (0.5 + Math.random() * 1.5) + 's';
+
+  container.appendChild(star);
+}
+
+// Countdown timer
+let seconds = 30;
+const countdownEl = document.getElementById('countdown');
+
+const timer = setInterval(() => {
+  seconds--;
+  countdownEl.textContent = seconds;
+
+  if (seconds <= 0) {
+    clearInterval(timer);
+    // Fade out
+    document.body.style.transition = 'opacity 1s';
+    document.body.style.opacity = '0';
+  }
+}, 1000);
+</script>
+</body>
+</html>

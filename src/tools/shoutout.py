@@ -53,11 +53,16 @@ def shoutout_streamer(
             clip = clips[0]
             scene = obs.get_current_scene()
 
-            # Remove old shoutout if present
-            try:
-                obs.remove_source("shoutout-clip")
-            except Exception:
-                pass
+            # Remove old shoutout if present - try multiple times
+            for _ in range(3):
+                try:
+                    obs.remove_source("shoutout-clip")
+                except Exception:
+                    pass
+                try:
+                    obs.client.remove_input("shoutout-clip")
+                except Exception:
+                    pass
 
             # Create browser source with clip embed
             embed_url = f"{clip['embed_url']}&parent=localhost&autoplay=true&muted=false"
