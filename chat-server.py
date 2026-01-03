@@ -253,6 +253,22 @@ async def handle_overlay(request):
     return web.Response(text="Overlay not found", status=404)
 
 
+async def handle_countdown(request):
+    """Serve the countdown timer HTML."""
+    html_path = Path(__file__).parent / "assets" / "countdown-timer.html"
+    if html_path.exists():
+        return web.FileResponse(html_path)
+    return web.Response(text="Countdown not found", status=404)
+
+
+async def handle_claude_badge(request):
+    """Serve the Claude AI badge HTML."""
+    html_path = Path(__file__).parent / "assets" / "claude-badge.html"
+    if html_path.exists():
+        return web.FileResponse(html_path)
+    return web.Response(text="Badge not found", status=404)
+
+
 async def start_background_tasks(app):
     print(f"Starting IRC listener for #{CHANNEL}...")
     app["irc_task"] = asyncio.create_task(irc_listener())
@@ -277,6 +293,8 @@ def main():
     app.router.add_get("/events", handle_sse)
     app.router.add_get("/chat", handle_chat)
     app.router.add_get("/health", handle_health)
+    app.router.add_get("/countdown", handle_countdown)
+    app.router.add_get("/claude-badge", handle_claude_badge)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
 

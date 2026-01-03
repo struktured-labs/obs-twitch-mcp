@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * { margin: 0; padding: 0; }
+
+  body {
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .countdown-container {
+    text-align: center;
+  }
+
+  .title {
+    font-size: 32px;
+    color: #ff6b6b;
+    text-shadow: 0 0 20px #ff6b6b, 0 0 40px #ff6b6b;
+    margin-bottom: 30px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .timer {
+    font-size: 80px;
+    color: #4ecdc4;
+    text-shadow: 0 0 30px #4ecdc4, 0 0 60px #4ecdc4;
+    letter-spacing: 10px;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    color: #ffe66d;
+    text-shadow: 0 0 15px #ffe66d;
+    margin-top: 30px;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.02); }
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  .finished {
+    animation: rainbow 2s linear infinite;
+  }
+
+  @keyframes rainbow {
+    0% { color: #ff6b6b; text-shadow: 0 0 30px #ff6b6b; }
+    25% { color: #4ecdc4; text-shadow: 0 0 30px #4ecdc4; }
+    50% { color: #ffe66d; text-shadow: 0 0 30px #ffe66d; }
+    75% { color: #ff9ff3; text-shadow: 0 0 30px #ff9ff3; }
+    100% { color: #ff6b6b; text-shadow: 0 0 30px #ff6b6b; }
+  }
+</style>
+</head>
+<body>
+
+<div class="countdown-container">
+  <div class="title">STREAM STARTING</div>
+  <div class="timer" id="timer">05:00</div>
+  <div class="subtitle">GET READY!</div>
+</div>
+
+<script>
+// Get duration from URL params or default to 5 minutes
+const params = new URLSearchParams(window.location.search);
+let totalSeconds = parseInt(params.get('minutes') || '5') * 60;
+
+function updateTimer() {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  const timerEl = document.getElementById('timer');
+
+  if (totalSeconds <= 0) {
+    timerEl.textContent = 'LIVE!';
+    timerEl.classList.add('finished');
+    return;
+  }
+
+  timerEl.textContent =
+    String(minutes).padStart(2, '0') + ':' +
+    String(seconds).padStart(2, '0');
+
+  totalSeconds--;
+  setTimeout(updateTimer, 1000);
+}
+
+updateTimer();
+</script>
+</body>
+</html>
