@@ -11,6 +11,7 @@ from mcp.server.fastmcp import FastMCP
 from .utils.obs_client import OBSClient
 from .utils.twitch_client import TwitchClient
 from .utils.chat_listener import ChatListener
+from .utils.twitch_auth import get_valid_token
 
 # Initialize FastMCP server
 mcp = FastMCP(name="obs-twitch-mcp")
@@ -25,8 +26,18 @@ TOKEN_FILE = Path(__file__).parent.parent / ".twitch_token.json"
 
 
 def _get_oauth_token() -> str:
-    """Get OAuth token from file (preferred) or environment."""
-    # Check token file first (from device code auth)
+    """Get OAuth token, auto-refreshing if expired."""
+    client_id = os.getenv("TWITCH_CLIENT_ID", "")
+    client_secret = os.getenv("TWITCH_CLIENT_SECRET", "")
+
+    if client_id and client_secret:
+        try:
+            # Use auto-refresh logic
+            return get_valid_token(client_id, client_secret)
+        except Exception as e:
+            print(f"Token auto-refresh failed: {e}")
+
+    # Fallback: read from file without refresh
     if TOKEN_FILE.exists():
         try:
             with open(TOKEN_FILE) as f:
