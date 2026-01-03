@@ -36,9 +36,11 @@ panic_overlay_visible = False
 death_overlay_visible = False
 death_overlay_time = 0
 low_health_count = 0  # Consecutive low readings before triggering
+last_valid_health = 100  # Track last known valid health reading
 client = None
 DEATH_OVERLAY_DURATION = 20  # seconds
 LOW_HEALTH_THRESHOLD = 3  # Require 3 consecutive low readings to trigger
+MIN_VALID_HEALTH = 10  # Below this, assume health bar not visible
 
 
 def get_obs_client():
@@ -232,21 +234,30 @@ async def monitor_health():
             check_death_overlay_timeout(obs_client)
 
             # Track consecutive low health readings
-            global low_health_count
-            if health_pct < 5:
-                low_health_count += 1
+            global low_health_count, last_valid_health
+
+            # If health bar not visible (very low reading), skip detection
+            # This handles pause screens, menus, scene transitions
+            if health_pct < MIN_VALID_HEALTH:
+                # Only count as death if we previously had visible health that was low
+                if last_valid_health < 30:
+                    low_health_count += 1
+                # Otherwise ignore - probably just menu/pause
             elif health_pct < 50:
                 low_health_count = max(0, low_health_count - 1)  # Slowly reset
+                last_valid_health = health_pct
             else:
                 low_health_count = 0  # Reset on good health
+                last_valid_health = health_pct
 
             # Check thresholds with hysteresis
             if low_health_count >= LOW_HEALTH_THRESHOLD:  # Death confirmed!
                 show_death_overlay(obs_client)
-            elif health_pct < 50 and low_health_count < LOW_HEALTH_THRESHOLD:
+                low_health_count = 0  # Reset after showing
+            elif health_pct >= MIN_VALID_HEALTH and health_pct < 50:
                 if not death_overlay_visible:  # Don't show panic during death
                     show_panic_overlay(obs_client)
-            else:
+            elif health_pct >= 50:
                 hide_panic_overlay(obs_client)
 
             # Debug output every 5 seconds or on state change
