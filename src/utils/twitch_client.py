@@ -300,3 +300,95 @@ class TwitchClient:
             f"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={self.user_id}&to_broadcaster_id={target_user_id}&moderator_id={self.user_id}",
             headers=headers,
         )
+
+    def get_user_id(self, username: str) -> str | None:
+        """Get a user's ID from their username."""
+        import httpx
+
+        headers = {
+            "Client-ID": self.client_id,
+            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
+        }
+        resp = httpx.get(
+            f"https://api.twitch.tv/helix/users?login={username}",
+            headers=headers,
+        )
+        user_data = resp.json()
+        if user_data.get("data"):
+            return user_data["data"][0]["id"]
+        return None
+
+    def get_streams_by_game(self, game_id: str, count: int = 20) -> list[dict]:
+        """Get live streams for a specific game/category."""
+        import httpx
+
+        headers = {
+            "Client-ID": self.client_id,
+            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
+        }
+        resp = httpx.get(
+            f"https://api.twitch.tv/helix/streams?game_id={game_id}&first={count}",
+            headers=headers,
+        )
+        data = resp.json()
+        return [
+            {
+                "user_id": s["user_id"],
+                "user_login": s["user_login"],
+                "user_name": s["user_name"],
+                "game_name": s["game_name"],
+                "title": s["title"],
+                "viewer_count": s["viewer_count"],
+            }
+            for s in data.get("data", [])
+        ]
+
+    def start_raid(self, target_username: str) -> dict:
+        """Start a raid to another channel."""
+        import httpx
+
+        headers = {
+            "Client-ID": self.client_id,
+            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
+        }
+
+        # Get target user ID
+        target_user_id = self.get_user_id(target_username)
+        if not target_user_id:
+            raise ValueError(f"User {target_username} not found")
+
+        # Start the raid
+        resp = httpx.post(
+            f"https://api.twitch.tv/helix/raids?from_broadcaster_id={self.user_id}&to_broadcaster_id={target_user_id}",
+            headers=headers,
+        )
+
+        if resp.status_code >= 400:
+            raise ValueError(f"Raid failed: {resp.status_code} - {resp.text}")
+
+        data = resp.json()
+        if data.get("data"):
+            return {
+                "target": target_username,
+                "created_at": data["data"][0].get("created_at"),
+                "is_mature": data["data"][0].get("is_mature", False),
+            }
+        return {"target": target_username, "status": "initiated"}
+
+    def cancel_raid(self) -> str:
+        """Cancel an ongoing raid."""
+        import httpx
+
+        headers = {
+            "Client-ID": self.client_id,
+            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
+        }
+
+        resp = httpx.delete(
+            f"https://api.twitch.tv/helix/raids?broadcaster_id={self.user_id}",
+            headers=headers,
+        )
+
+        if resp.status_code >= 400:
+            return f"Cancel raid failed: {resp.status_code}"
+        return "Raid cancelled"

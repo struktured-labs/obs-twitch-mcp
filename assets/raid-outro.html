@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: transparent;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    position: relative;
+    font-family: 'Arial Black', sans-serif;
+  }
+
+  /* Dark overlay that fades in */
+  .dark-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.9) 100%);
+    animation: fadeIn 1s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  /* Main raid text */
+  .raid-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 180px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow:
+      0 0 20px #ff00ff,
+      0 0 40px #ff00ff,
+      0 0 60px #ff00ff,
+      0 0 80px #00ffff,
+      0 0 100px #00ffff;
+    animation: raidPulse 0.5s ease-in-out infinite, raidSlam 0.8s ease-out forwards;
+    letter-spacing: 15px;
+    z-index: 100;
+  }
+
+  @keyframes raidSlam {
+    0% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(0.9); }
+    70% { transform: translate(-50%, -50%) scale(1.1); }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  @keyframes raidPulse {
+    0%, 100% { text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff, 0 0 60px #ff00ff, 0 0 80px #00ffff; }
+    50% { text-shadow: 0 0 30px #00ffff, 0 0 50px #00ffff, 0 0 70px #00ffff, 0 0 90px #ff00ff; }
+  }
+
+  /* Subtitle */
+  .subtitle {
+    position: absolute;
+    top: 62%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 48px;
+    color: #fff;
+    opacity: 0;
+    animation: subtitleFade 1s ease-out 1s forwards;
+    text-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+    z-index: 100;
+  }
+
+  @keyframes subtitleFade {
+    0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* Flying arrows/characters */
+  .raider {
+    position: absolute;
+    font-size: 60px;
+    animation: flyAcross linear infinite;
+    z-index: 50;
+  }
+
+  @keyframes flyAcross {
+    0% { transform: translateX(-100px) rotate(0deg); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateX(2020px) rotate(360deg); opacity: 0; }
+  }
+
+  /* Lightning bolts */
+  .lightning {
+    position: absolute;
+    width: 4px;
+    height: 200px;
+    background: linear-gradient(to bottom, transparent, #fff, #00ffff, transparent);
+    animation: lightningFlash 0.3s ease-out forwards;
+    z-index: 200;
+  }
+
+  @keyframes lightningFlash {
+    0% { opacity: 1; transform: scaleY(0); }
+    50% { opacity: 1; transform: scaleY(1); }
+    100% { opacity: 0; transform: scaleY(1); }
+  }
+
+  /* Sparkles */
+  .sparkle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    animation: sparklePop 1s ease-out forwards;
+    box-shadow: 0 0 10px #fff, 0 0 20px #ff00ff;
+  }
+
+  @keyframes sparklePop {
+    0% { transform: scale(0); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 1; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  /* Speed lines */
+  .speed-line {
+    position: absolute;
+    height: 3px;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.8), transparent);
+    animation: speedStreak 0.5s linear forwards;
+  }
+
+  @keyframes speedStreak {
+    0% { transform: translateX(-100%); opacity: 1; }
+    100% { transform: translateX(100%); opacity: 0; }
+  }
+
+  /* Portal effect */
+  .portal {
+    position: absolute;
+    right: 100px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(0,255,255,0.3) 0%, rgba(255,0,255,0.2) 50%, transparent 70%);
+    animation: portalSpin 2s linear infinite, portalGrow 1s ease-out forwards;
+    box-shadow: 0 0 50px rgba(0,255,255,0.5), inset 0 0 50px rgba(255,0,255,0.3);
+    z-index: 10;
+  }
+
+  @keyframes portalSpin {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
+  }
+
+  @keyframes portalGrow {
+    0% { width: 0; height: 0; opacity: 0; }
+    100% { width: 300px; height: 300px; opacity: 1; }
+  }
+
+  /* Hearts/thanks */
+  .heart {
+    position: absolute;
+    font-size: 40px;
+    animation: heartFloat 3s ease-out forwards;
+    z-index: 60;
+  }
+
+  @keyframes heartFloat {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-200px) scale(0.5); }
+  }
+
+  /* Bottom banner */
+  .banner {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 36px;
+    color: #fff;
+    opacity: 0;
+    animation: bannerSlide 1s ease-out 2s forwards;
+    text-shadow: 0 0 10px rgba(0,255,255,0.8);
+    z-index: 100;
+  }
+
+  @keyframes bannerSlide {
+    0% { opacity: 0; transform: translateX(-50%) translateY(50px); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="dark-overlay"></div>
+<div class="raid-text">RAID!</div>
+<div class="subtitle">Let's roll out!</div>
+<div class="portal"></div>
+<div class="banner">Thanks for hanging out! See you next time!</div>
+
+<script>
+const emojis = ['🚀', '⚔️', '🎮', '💜', '✨', '🔥', '⭐', '🎯'];
+const hearts = ['💜', '💙', '💚', '🧡', '❤️'];
+
+// Create flying raiders
+function createRaider() {
+  const raider = document.createElement('div');
+  raider.className = 'raider';
+  raider.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+  raider.style.top = (100 + Math.random() * 800) + 'px';
+  raider.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+  raider.style.animationDelay = Math.random() * 0.5 + 's';
+  document.body.appendChild(raider);
+  setTimeout(() => raider.remove(), 4000);
+}
+
+// Create sparkles
+function createSparkle() {
+  const sparkle = document.createElement('div');
+  sparkle.className = 'sparkle';
+  sparkle.style.left = Math.random() * 1920 + 'px';
+  sparkle.style.top = Math.random() * 1080 + 'px';
+  document.body.appendChild(sparkle);
+  setTimeout(() => sparkle.remove(), 1000);
+}
+
+// Create speed lines
+function createSpeedLine() {
+  const line = document.createElement('div');
+  line.className = 'speed-line';
+  line.style.top = Math.random() * 1080 + 'px';
+  line.style.width = (100 + Math.random() * 300) + 'px';
+  line.style.left = Math.random() * 1920 + 'px';
+  document.body.appendChild(line);
+  setTimeout(() => line.remove(), 500);
+}
+
+// Create lightning
+function createLightning() {
+  const lightning = document.createElement('div');
+  lightning.className = 'lightning';
+  lightning.style.left = Math.random() * 1920 + 'px';
+  lightning.style.top = Math.random() * 500 + 'px';
+  lightning.style.transform = `rotate(${-20 + Math.random() * 40}deg)`;
+  document.body.appendChild(lightning);
+  setTimeout(() => lightning.remove(), 300);
+}
+
+// Create floating hearts
+function createHeart() {
+  const heart = document.createElement('div');
+  heart.className = 'heart';
+  heart.textContent = hearts[Math.floor(Math.random() * hearts.length)];
+  heart.style.left = (200 + Math.random() * 1500) + 'px';
+  heart.style.bottom = '100px';
+  document.body.appendChild(heart);
+  setTimeout(() => heart.remove(), 3000);
+}
+
+// Start effects
+setInterval(createRaider, 200);
+setInterval(createSparkle, 100);
+setInterval(createSpeedLine, 150);
+setInterval(createHeart, 500);
+
+// Initial lightning burst
+setTimeout(() => {
+  for (let i = 0; i < 5; i++) {
+    setTimeout(createLightning, i * 100);
+  }
+}, 500);
+
+// Periodic lightning
+setInterval(() => {
+  if (Math.random() < 0.3) createLightning();
+}, 500);
+</script>
+</body>
+</html>

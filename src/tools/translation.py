@@ -111,17 +111,97 @@ def translate_and_overlay(
 
 
 @mcp.tool()
-def clear_translation_overlay() -> str:
-    """Remove the translation overlay from the scene."""
+def clear_translation_overlay(
+    duration_seconds: float = 0,
+    style: str = "instant",
+) -> str:
+    """
+    Remove the translation overlay from the scene.
+
+    Args:
+        duration_seconds: How long the exit animation takes (0 = instant)
+        style: Animation style - "instant", "slide-left", "slide-right",
+               "slide-up", "slide-down", "fade"
+    """
     global _last_japanese_text
 
     client = get_obs_client()
+    scene = client.get_current_scene()
+
+    # Get the item ID for animation
     try:
-        client.remove_source("tl-overlay")
-        _last_japanese_text = ""
-        return "Translation overlay removed"
+        item_id = client.client.get_scene_item_id(scene, "tl-overlay").scene_item_id
     except Exception:
+        _last_japanese_text = ""
         return "No translation overlay to remove"
+
+    # If instant or no duration, just remove
+    if style == "instant" or duration_seconds <= 0:
+        try:
+            client.remove_source("tl-overlay")
+            _last_japanese_text = ""
+            return "Translation overlay removed"
+        except Exception:
+            return "No translation overlay to remove"
+
+    # Animate the removal
+    async def animate_removal():
+        global _last_japanese_text
+        try:
+            # Get current transform
+            transform = client.get_scene_item_transform(scene, item_id)
+            start_x = transform.get("positionX", 960)
+            start_y = transform.get("positionY", 950)
+
+            # Calculate end position based on style
+            if style == "slide-left":
+                end_x, end_y = -500, start_y
+            elif style == "slide-right":
+                end_x, end_y = 2420, start_y
+            elif style == "slide-up":
+                end_x, end_y = start_x, -200
+            elif style == "slide-down":
+                end_x, end_y = start_x, 1280
+            elif style == "fade":
+                # For fade, we'll just do a quick slide-down as fallback
+                # (true opacity fade would require OBS filters)
+                end_x, end_y = start_x, 1280
+            else:
+                end_x, end_y = start_x, start_y
+
+            # Animate over duration
+            steps = int(duration_seconds * 30)  # 30 fps animation
+            if steps < 1:
+                steps = 1
+
+            for i in range(steps):
+                t = (i + 1) / steps  # Progress from 0 to 1
+                # Ease-out curve for smooth deceleration
+                t = 1 - (1 - t) ** 2
+
+                current_x = start_x + (end_x - start_x) * t
+                current_y = start_y + (end_y - start_y) * t
+
+                try:
+                    client.set_scene_item_transform(scene, item_id, current_x, current_y, alignment=4)
+                except Exception:
+                    break
+
+                await asyncio.sleep(duration_seconds / steps)
+
+            # Remove the source after animation
+            client.remove_source("tl-overlay")
+            _last_japanese_text = ""
+        except Exception:
+            # Fallback: just remove it
+            try:
+                client.remove_source("tl-overlay")
+            except Exception:
+                pass
+            _last_japanese_text = ""
+
+    asyncio.create_task(animate_removal())
+    return f"Translation overlay animating out ({style}, {duration_seconds}s)"
 
 
 @mcp.tool()
