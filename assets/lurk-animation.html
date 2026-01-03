@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * { margin: 0; padding: 0; }
+
+  body {
+    background: transparent;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .lurk-container {
+    position: absolute;
+    bottom: 150px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: slide-in 0.5s ease-out;
+  }
+
+  @keyframes slide-in {
+    from {
+      transform: translateX(-50%) translateY(100px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Username display */
+  .lurker-name {
+    font-size: 24px;
+    color: #9b59b6;
+    text-shadow:
+      0 0 10px #9b59b6,
+      2px 2px 0 #000;
+    margin-bottom: 10px;
+    animation: glow 1s ease-in-out infinite alternate;
+  }
+
+  @keyframes glow {
+    from { text-shadow: 0 0 10px #9b59b6, 2px 2px 0 #000; }
+    to { text-shadow: 0 0 20px #9b59b6, 0 0 30px #8e44ad, 2px 2px 0 #000; }
+  }
+
+  /* Lurk message */
+  .lurk-message {
+    background: rgba(0, 0, 0, 0.8);
+    border: 3px solid #9b59b6;
+    border-radius: 15px;
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .lurk-emoji {
+    font-size: 50px;
+    animation: peek 2s ease-in-out infinite;
+  }
+
+  @keyframes peek {
+    0%, 100% { transform: translateX(0) rotate(0deg); }
+    25% { transform: translateX(-10px) rotate(-10deg); }
+    75% { transform: translateX(10px) rotate(10deg); }
+  }
+
+  .lurk-text {
+    font-size: 16px;
+    color: #fff;
+    text-shadow: 1px 1px 0 #000;
+  }
+
+  .lurk-subtext {
+    font-size: 10px;
+    color: #888;
+    margin-top: 8px;
+  }
+
+  /* Floating eyes in background */
+  .eyes {
+    position: absolute;
+    font-size: 30px;
+    opacity: 0.4;
+    animation: float-eyes 3s ease-in-out infinite;
+  }
+
+  .eyes-1 { top: 20%; left: 10%; animation-delay: 0s; }
+  .eyes-2 { top: 30%; right: 15%; animation-delay: 0.5s; }
+  .eyes-3 { top: 50%; left: 20%; animation-delay: 1s; }
+  .eyes-4 { top: 40%; right: 25%; animation-delay: 1.5s; }
+  .eyes-5 { bottom: 30%; left: 15%; animation-delay: 2s; }
+
+  @keyframes float-eyes {
+    0%, 100% {
+      transform: translateY(0);
+      opacity: 0.4;
+    }
+    50% {
+      transform: translateY(-15px);
+      opacity: 0.7;
+    }
+  }
+
+  /* Sneaky shadow effect */
+  .shadow {
+    position: absolute;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 20px;
+    background: radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 70%);
+    animation: shadow-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes shadow-pulse {
+    0%, 100% { transform: translateX(-50%) scaleX(1); }
+    50% { transform: translateX(-50%) scaleX(1.2); }
+  }
+
+  /* Moon in corner */
+  .moon {
+    position: absolute;
+    top: 50px;
+    right: 80px;
+    font-size: 60px;
+    animation: moon-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes moon-glow {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.3) drop-shadow(0 0 20px #fff); }
+  }
+
+  /* ZZZ for lurking */
+  .zzz {
+    position: absolute;
+    font-size: 24px;
+    color: #9b59b6;
+    text-shadow: 1px 1px 0 #000;
+    animation: zzz-float 2s ease-in-out infinite;
+  }
+
+  .zzz-1 { bottom: 280px; left: calc(50% + 80px); animation-delay: 0s; font-size: 16px; }
+  .zzz-2 { bottom: 310px; left: calc(50% + 100px); animation-delay: 0.3s; font-size: 20px; }
+  .zzz-3 { bottom: 350px; left: calc(50% + 120px); animation-delay: 0.6s; font-size: 24px; }
+
+  @keyframes zzz-float {
+    0%, 100% { opacity: 0.3; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-10px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="moon">🌙</div>
+
+<div class="eyes eyes-1">👀</div>
+<div class="eyes eyes-2">👀</div>
+<div class="eyes eyes-3">👀</div>
+<div class="eyes eyes-4">👀</div>
+<div class="eyes eyes-5">👀</div>
+
+<div class="zzz zzz-1">Z</div>
+<div class="zzz zzz-2">Z</div>
+<div class="zzz zzz-3">Z</div>
+
+<div class="shadow"></div>
+
+<div class="lurk-container">
+  <div class="lurker-name" id="lurkerName">Someone</div>
+  <div class="lurk-message">
+    <div class="lurk-emoji">🥷</div>
+    <div>
+      <div class="lurk-text">is now lurking...</div>
+      <div class="lurk-subtext">sneaking into the shadows</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Get username from URL params
+const params = new URLSearchParams(window.location.search);
+const username = params.get('user') || 'A mysterious viewer';
+document.getElementById('lurkerName').textContent = username;
+</script>
+
+</body>
+</html>
