@@ -108,6 +108,40 @@ def obs_remove_source(source_name: str) -> str:
 
 
 @mcp.tool()
+def obs_show_source(source_name: str, scene_name: str = "") -> str:
+    """
+    Show (enable) a source in a scene.
+
+    Args:
+        source_name: Name of the source to show
+        scene_name: Scene containing the source (uses current scene if not specified)
+    """
+    client = get_obs_client()
+    if not scene_name:
+        scene_name = client.get_current_scene()
+    item_id = client.client.get_scene_item_id(scene_name, source_name).scene_item_id
+    client.set_scene_item_enabled(scene_name, item_id, True)
+    return f"Showing '{source_name}' in scene '{scene_name}'"
+
+
+@mcp.tool()
+def obs_hide_source(source_name: str, scene_name: str = "") -> str:
+    """
+    Hide (disable) a source in a scene.
+
+    Args:
+        source_name: Name of the source to hide
+        scene_name: Scene containing the source (uses current scene if not specified)
+    """
+    client = get_obs_client()
+    if not scene_name:
+        scene_name = client.get_current_scene()
+    item_id = client.client.get_scene_item_id(scene_name, source_name).scene_item_id
+    client.set_scene_item_enabled(scene_name, item_id, False)
+    return f"Hiding '{source_name}' in scene '{scene_name}'"
+
+
+@mcp.tool()
 def obs_list_inputs() -> list[dict]:
     """List all inputs/sources registered in OBS (even orphaned ones not in any scene)."""
     client = get_obs_client()
