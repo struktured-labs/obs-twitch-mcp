@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * { margin: 0; padding: 0; }
+
+  body {
+    background: transparent;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .panic-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+  }
+
+  /* Red vignette danger effect */
+  .danger-vignette {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(255,0,0,0.4) 100%);
+    animation: pulse-danger 0.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-danger {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* Screen shake effect */
+  .shake {
+    animation: shake 0.1s infinite;
+  }
+
+  @keyframes shake {
+    0% { transform: translate(2px, 1px); }
+    20% { transform: translate(-1px, -2px); }
+    40% { transform: translate(-3px, 0px); }
+    60% { transform: translate(0px, 2px); }
+    80% { transform: translate(1px, -1px); }
+    100% { transform: translate(2px, 1px); }
+  }
+
+  /* Panic text */
+  .panic-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    color: #ff0000;
+    text-shadow:
+      0 0 10px #ff0000,
+      0 0 20px #ff0000,
+      0 0 40px #ff0000,
+      3px 3px 0 #000;
+    animation: panic-bounce 0.3s ease-in-out infinite, flicker 0.1s infinite;
+    white-space: nowrap;
+  }
+
+  @keyframes panic-bounce {
+    0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(-2deg); }
+    50% { transform: translate(-50%, -50%) scale(1.1) rotate(2deg); }
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
+
+  /* Warning symbols */
+  .warning {
+    position: absolute;
+    font-size: 60px;
+    animation: spin-warning 0.5s linear infinite;
+  }
+
+  .warning-1 { top: 20%; left: 10%; animation-delay: 0s; }
+  .warning-2 { top: 20%; right: 10%; animation-delay: 0.1s; }
+  .warning-3 { bottom: 20%; left: 15%; animation-delay: 0.2s; }
+  .warning-4 { bottom: 20%; right: 15%; animation-delay: 0.3s; }
+
+  @keyframes spin-warning {
+    0% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(10deg) scale(1.2); }
+    50% { transform: rotate(0deg) scale(1); }
+    75% { transform: rotate(-10deg) scale(1.2); }
+    100% { transform: rotate(0deg) scale(1); }
+  }
+
+  /* Heartbeat line */
+  .heartbeat {
+    position: absolute;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 60px;
+  }
+
+  .heartbeat-line {
+    stroke: #ff0000;
+    stroke-width: 3;
+    fill: none;
+    animation: heartbeat-pulse 0.6s ease-in-out infinite;
+    filter: drop-shadow(0 0 5px #ff0000);
+  }
+
+  @keyframes heartbeat-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Skull flashing */
+  .skull {
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 80px;
+    animation: skull-flash 0.4s ease-in-out infinite;
+  }
+
+  @keyframes skull-flash {
+    0%, 100% { opacity: 0.3; transform: translateX(-50%) scale(1); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.2); }
+  }
+
+  /* Low health bar indicator */
+  .health-critical {
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #300;
+    border: 3px solid #f00;
+    padding: 10px 20px;
+    border-radius: 5px;
+    animation: health-flash 0.3s infinite;
+  }
+
+  .health-critical span {
+    color: #ff0000;
+    font-size: 14px;
+    text-shadow: 0 0 10px #ff0000;
+  }
+
+  @keyframes health-flash {
+    0%, 100% { background: #300; border-color: #f00; }
+    50% { background: #500; border-color: #f55; }
+  }
+</style>
+</head>
+<body>
+
+<div class="panic-container shake">
+  <div class="danger-vignette"></div>
+
+  <div class="skull">💀</div>
+
+  <div class="health-critical">
+    <span>!! CRITICAL HEALTH !!</span>
+  </div>
+
+  <div class="panic-text">OH CRAP!</div>
+
+  <div class="warning warning-1">⚠️</div>
+  <div class="warning warning-2">⚠️</div>
+  <div class="warning warning-3">⚠️</div>
+  <div class="warning warning-4">⚠️</div>
+
+  <svg class="heartbeat" viewBox="0 0 300 60">
+    <path class="heartbeat-line" d="M0,30 L50,30 L60,30 L70,10 L80,50 L90,20 L100,40 L110,30 L150,30 L160,30 L170,5 L180,55 L190,15 L200,45 L210,30 L300,30" />
+  </svg>
+</div>
+
+</body>
+</html>
