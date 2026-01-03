@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * { margin: 0; padding: 0; }
+
+  body {
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .badge {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border: 3px solid #e94560;
+    border-radius: 12px;
+    padding: 15px 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow:
+      0 0 20px rgba(233, 69, 96, 0.5),
+      inset 0 0 20px rgba(233, 69, 96, 0.1);
+    animation: borderGlow 2s ease-in-out infinite;
+  }
+
+  @keyframes borderGlow {
+    0%, 100% {
+      border-color: #e94560;
+      box-shadow: 0 0 20px rgba(233, 69, 96, 0.5), inset 0 0 20px rgba(233, 69, 96, 0.1);
+    }
+    50% {
+      border-color: #ff9f43;
+      box-shadow: 0 0 30px rgba(255, 159, 67, 0.6), inset 0 0 25px rgba(255, 159, 67, 0.15);
+    }
+  }
+
+  .ai-icon {
+    font-size: 28px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  .text-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .powered-by {
+    font-size: 8px;
+    color: #aaa;
+    letter-spacing: 2px;
+  }
+
+  .claude-text {
+    font-size: 16px;
+    color: #fff;
+    text-shadow: 0 0 10px #e94560;
+    letter-spacing: 3px;
+  }
+
+  .sparkle {
+    position: absolute;
+    animation: sparkle 2s linear infinite;
+  }
+
+  @keyframes sparkle {
+    0%, 100% { opacity: 0; transform: scale(0); }
+    50% { opacity: 1; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<div class="badge">
+  <div class="ai-icon">🤖</div>
+  <div class="text-container">
+    <div class="powered-by">POWERED BY</div>
+    <div class="claude-text">CLAUDE AI</div>
+  </div>
+</div>
+
+</body>
+</html>
