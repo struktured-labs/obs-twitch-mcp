@@ -2,13 +2,13 @@
 <html>
 <head>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
     background: transparent;
-    font-family: 'Press Start 2P', monospace;
+    font-family: 'VT323', 'Courier New', monospace;
     width: 100%;
     height: 100vh;
     overflow: hidden;
@@ -35,15 +35,16 @@
   }
 
   .chat-message {
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-radius: 4px;
-    background: rgba(0, 0, 0, 0.6);
-    border-left: 4px solid;
+    background: rgba(0, 0, 0, 0.7);
+    border-left: 5px solid;
     animation: slideIn 0.3s ease-out, glow 2s ease-in-out infinite;
     text-shadow: 0 0 10px currentColor;
-    font-size: 14px;
-    line-height: 1.6;
+    font-size: 42px;
+    line-height: 1.4;
     word-wrap: break-word;
+    letter-spacing: 1px;
   }
 
   @keyframes slideIn {
@@ -73,14 +74,15 @@
 
   .username {
     font-weight: bold;
-    margin-right: 8px;
+    margin-right: 10px;
     text-transform: uppercase;
-    font-size: 12px;
+    font-size: 36px;
   }
 
   .message-text {
     color: #ffffff;
-    text-shadow: 0 0 5px rgba(255,255,255,0.5);
+    font-size: 42px;
+    text-shadow: 0 0 8px rgba(255,255,255,0.6);
   }
 
   /* Neon color palette for usernames */
@@ -141,13 +143,12 @@
 </div>
 
 <script>
-const MAX_MESSAGES = 12;
-const MESSAGE_LIFETIME = 60000; // 60 seconds before fade
-const POLL_INTERVAL = 2000; // Poll every 2 seconds
-const CHAT_ENDPOINT = 'http://localhost:8765/chat';
+const MAX_MESSAGES = 15;
+const MESSAGE_LIFETIME = 90000; // 90 seconds before fade
+const SSE_ENDPOINT = 'http://localhost:8765/events';
 
-let lastMessageId = '';
 let messageElements = [];
+let eventSource = null;
 
 function getColorClass(username) {
   // Hash username to get consistent color
@@ -194,21 +195,31 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-async function fetchMessages() {
-  try {
-    const response = await fetch(CHAT_ENDPOINT + '?after=' + encodeURIComponent(lastMessageId));
-    if (!response.ok) return;
-
-    const data = await response.json();
-    if (data.messages && data.messages.length > 0) {
-      data.messages.forEach(msg => {
-        addMessage(msg);
-        if (msg.id) lastMessageId = msg.id;
-      });
-    }
-  } catch (e) {
-    // Silently fail - server might not be running
+function connectSSE() {
+  if (eventSource) {
+    eventSource.close();
   }
+
+  eventSource = new EventSource(SSE_ENDPOINT);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      addMessage(msg);
+    } catch (e) {
+      console.error('Failed to parse message:', e);
+    }
+  };
+
+  eventSource.onerror = (e) => {
+    console.log('SSE connection error, reconnecting in 3s...');
+    eventSource.close();
+    setTimeout(connectSSE, 3000);
+  };
+
+  eventSource.onopen = () => {
+    console.log('Connected to chat server');
+  };
 }
 
 // Check for old messages and fade them
@@ -226,34 +237,9 @@ function checkMessageAges() {
   });
 }
 
-// Demo messages for testing (remove in production)
-function addDemoMessages() {
-  const demoMessages = [
-    { username: 'struktured', message: 'Welcome to the stream!', is_broadcaster: true },
-    { username: 'RetroGamer42', message: 'Love the pixel art vibes!', is_subscriber: true },
-    { username: 'ChatBot3000', message: 'PogChamp this overlay is sick', is_mod: true },
-    { username: 'NeonNinja', message: 'What game is this?', is_subscriber: false },
-    { username: 'PixelPusher', message: 'The mage animations are amazing', is_subscriber: true },
-  ];
-
-  demoMessages.forEach((msg, i) => {
-    setTimeout(() => addMessage(msg), i * 800);
-  });
-}
-
-// Start polling
-setInterval(fetchMessages, POLL_INTERVAL);
+// Start SSE connection
+connectSSE();
 setInterval(checkMessageAges, 5000);
-
-// Initial fetch
-fetchMessages();
-
-// Add demo messages if no server (for testing)
-setTimeout(() => {
-  if (messageElements.length === 0) {
-    addDemoMessages();
-  }
-}, 3000);
 </script>
 </body>
 </html>
