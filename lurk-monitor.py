@@ -24,6 +24,7 @@ CHAT_SERVER = "http://localhost:8765"
 # State
 obs_client = None
 lurk_hide_task = None
+current_lurker = None  # Track who is currently lurking
 
 
 def get_obs_client():
@@ -35,7 +36,7 @@ def get_obs_client():
 
 async def show_lurk_animation(username: str, duration: int = 10):
     """Show the lurk animation for a user."""
-    global lurk_hide_task
+    global lurk_hide_task, current_lurker
 
     client = get_obs_client()
     scene = client.get_current_program_scene().scene_name
@@ -43,6 +44,9 @@ async def show_lurk_animation(username: str, duration: int = 10):
     # Build URL with username
     html_path = Path(__file__).parent / "assets" / "lurk-animation.html"
     url = f"file://{html_path}?user={username}"
+
+    # Track who is lurking
+    current_lurker = username.lower()
 
     # Try to update existing source
     try:
@@ -75,15 +79,39 @@ async def show_lurk_animation(username: str, duration: int = 10):
 
     # Schedule hiding
     async def hide_after_delay():
+        global current_lurker
         await asyncio.sleep(duration)
         try:
             item_id = client.get_scene_item_id(scene, "mcp-lurk-overlay").scene_item_id
             client.set_scene_item_enabled(scene, item_id, False)
-            print(f"🥷 Lurk animation hidden")
+            current_lurker = None
+            print(f"🥷 Lurk animation hidden (timeout)")
         except Exception:
             pass
 
     lurk_hide_task = asyncio.create_task(hide_after_delay())
+
+
+async def hide_lurk_for_user(username: str):
+    """Hide lurk animation when user comes back."""
+    global lurk_hide_task, current_lurker
+
+    if current_lurker and current_lurker == username.lower():
+        client = get_obs_client()
+        scene = client.get_current_program_scene().scene_name
+
+        # Cancel the timeout task
+        if lurk_hide_task and not lurk_hide_task.done():
+            lurk_hide_task.cancel()
+
+        try:
+            item_id = client.get_scene_item_id(scene, "mcp-lurk-overlay").scene_item_id
+            client.set_scene_item_enabled(scene, item_id, False)
+            print(f"👋 {username} is back! Hiding lurk animation")
+        except Exception:
+            pass
+
+        current_lurker = None
 
 
 async def watch_chat():
@@ -107,6 +135,9 @@ async def watch_chat():
                                 if message == "!lurk" or message.startswith("!lurk "):
                                     print(f"🥷 {username} is lurking!")
                                     await show_lurk_animation(username, 10)
+                                else:
+                                    # Check if a lurker came back
+                                    await hide_lurk_for_user(username)
 
                             except json.JSONDecodeError:
                                 pass
