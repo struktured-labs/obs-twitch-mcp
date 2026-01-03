@@ -2,13 +2,15 @@
 Twitch API and IRC client wrapper.
 """
 
-import asyncio
 import socket
 import ssl
 from dataclasses import dataclass, field
 from typing import Callable
 
+import httpx
+
 from . import chat_logger
+from .twitch_auth import refresh_token, save_token, load_token
 
 
 @dataclass
@@ -34,18 +36,54 @@ class TwitchClient:
     _chat_messages: list[ChatMessage] = field(default_factory=list)
     _message_handlers: list[Callable[[ChatMessage], None]] = field(default_factory=list)
 
+    def _refresh_token(self) -> bool:
+        """Refresh the OAuth token. Returns True if successful."""
+        token_data = load_token()
+        if not token_data or not token_data.get("refresh_token"):
+            return False
+        if not self.client_secret:
+            return False
+        try:
+            new_token = refresh_token(
+                self.client_id, self.client_secret, token_data["refresh_token"]
+            )
+            save_token(new_token)
+            self.oauth_token = new_token["access_token"]
+            self._user_id = None  # Reset cached user ID
+            print(f"Token auto-refreshed successfully")
+            return True
+        except Exception as e:
+            print(f"Token refresh failed: {e}")
+            return False
+
+    def _api_call(self, method: str, url: str, **kwargs) -> httpx.Response:
+        """Make an API call with auto-retry on 401."""
+        # Extract extra headers once (don't pop on each iteration)
+        extra_headers = kwargs.pop("headers", {})
+
+        for attempt in range(3):
+            headers = {
+                "Client-ID": self.client_id,
+                "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
+                **extra_headers,
+            }
+
+            resp = getattr(httpx, method)(url, headers=headers, **kwargs)
+
+            if resp.status_code == 401:
+                print(f"API call failed with 401, refreshing token (attempt {attempt + 1}/3)")
+                if self._refresh_token():
+                    continue  # Retry with new token
+                else:
+                    break  # Refresh failed, give up
+            return resp
+        return resp  # Return last response even if failed
+
     @property
     def user_id(self) -> str:
         """Get the authenticated user's ID."""
         if self._user_id is None:
-            # Fetch user ID from API
-            import httpx
-
-            headers = {
-                "Client-ID": self.client_id,
-                "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-            }
-            resp = httpx.get("https://api.twitch.tv/helix/users", headers=headers)
+            resp = self._api_call("get", "https://api.twitch.tv/helix/users")
             data = resp.json()
             if data.get("data"):
                 self._user_id = data["data"][0]["id"]
@@ -99,15 +137,8 @@ class TwitchClient:
 
     def get_stream_info(self) -> dict | None:
         """Get current stream information."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-        resp = httpx.get(
-            f"https://api.twitch.tv/helix/streams?user_login={self.channel}",
-            headers=headers,
+        resp = self._api_call(
+            "get", f"https://api.twitch.tv/helix/streams?user_login={self.channel}"
         )
         data = resp.json()
         if data.get("data"):
@@ -123,13 +154,6 @@ class TwitchClient:
 
     def set_stream_info(self, title: str | None = None, game_id: str | None = None) -> None:
         """Update stream title and/or game."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-            "Content-Type": "application/json",
-        }
         data = {}
         if title:
             data["title"] = title
@@ -137,23 +161,16 @@ class TwitchClient:
             data["game_id"] = game_id
 
         if data:
-            httpx.patch(
+            self._api_call(
+                "patch",
                 f"https://api.twitch.tv/helix/channels?broadcaster_id={self.user_id}",
-                headers=headers,
                 json=data,
             )
 
     def search_game(self, query: str) -> list[dict]:
         """Search for a game by name."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-        resp = httpx.get(
-            f"https://api.twitch.tv/helix/search/categories?query={query}",
-            headers=headers,
+        resp = self._api_call(
+            "get", f"https://api.twitch.tv/helix/search/categories?query={query}"
         )
         data = resp.json()
         return [
@@ -163,17 +180,8 @@ class TwitchClient:
 
     def ban_user(self, username: str, reason: str = "") -> None:
         """Ban a user from chat."""
-        import httpx
-
         # First get user ID
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-        resp = httpx.get(
-            f"https://api.twitch.tv/helix/users?login={username}",
-            headers=headers,
-        )
+        resp = self._api_call("get", f"https://api.twitch.tv/helix/users?login={username}")
         user_data = resp.json()
         if not user_data.get("data"):
             raise ValueError(f"User {username} not found")
@@ -181,10 +189,9 @@ class TwitchClient:
         target_user_id = user_data["data"][0]["id"]
 
         # Ban the user
-        headers["Content-Type"] = "application/json"
-        ban_resp = httpx.post(
+        ban_resp = self._api_call(
+            "post",
             f"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={self.user_id}&moderator_id={self.user_id}",
-            headers=headers,
             json={"data": {"user_id": target_user_id, "reason": reason}},
         )
         if ban_resp.status_code >= 400:
@@ -192,66 +199,37 @@ class TwitchClient:
 
     def timeout_user(self, username: str, duration: int = 600, reason: str = "") -> None:
         """Timeout a user from chat."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-        resp = httpx.get(
-            f"https://api.twitch.tv/helix/users?login={username}",
-            headers=headers,
-        )
+        resp = self._api_call("get", f"https://api.twitch.tv/helix/users?login={username}")
         user_data = resp.json()
         if not user_data.get("data"):
             raise ValueError(f"User {username} not found")
 
         target_user_id = user_data["data"][0]["id"]
 
-        headers["Content-Type"] = "application/json"
-        httpx.post(
+        self._api_call(
+            "post",
             f"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={self.user_id}&moderator_id={self.user_id}",
-            headers=headers,
             json={"data": {"user_id": target_user_id, "duration": duration, "reason": reason}},
         )
 
     def unban_user(self, username: str) -> None:
         """Unban a user from chat."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-        resp = httpx.get(
-            f"https://api.twitch.tv/helix/users?login={username}",
-            headers=headers,
-        )
+        resp = self._api_call("get", f"https://api.twitch.tv/helix/users?login={username}")
         user_data = resp.json()
         if not user_data.get("data"):
             raise ValueError(f"User {username} not found")
 
         target_user_id = user_data["data"][0]["id"]
 
-        httpx.delete(
+        self._api_call(
+            "delete",
             f"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={self.user_id}&moderator_id={self.user_id}&user_id={target_user_id}",
-            headers=headers,
         )
 
     def get_user_clips(self, username: str, count: int = 1) -> list[dict]:
         """Get clips from a user's channel."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-
         # Get user ID
-        resp = httpx.get(
-            f"https://api.twitch.tv/helix/users?login={username}",
-            headers=headers,
-        )
+        resp = self._api_call("get", f"https://api.twitch.tv/helix/users?login={username}")
         user_data = resp.json()
         if not user_data.get("data"):
             return []
@@ -259,9 +237,8 @@ class TwitchClient:
         user_id = user_data["data"][0]["id"]
 
         # Get clips
-        resp = httpx.get(
-            f"https://api.twitch.tv/helix/clips?broadcaster_id={user_id}&first={count}",
-            headers=headers,
+        resp = self._api_call(
+            "get", f"https://api.twitch.tv/helix/clips?broadcaster_id={user_id}&first={count}"
         )
         clips_data = resp.json()
         return [
@@ -278,41 +255,22 @@ class TwitchClient:
 
     def shoutout(self, username: str) -> None:
         """Send a shoutout to another streamer."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-
         # Get user ID
-        resp = httpx.get(
-            f"https://api.twitch.tv/helix/users?login={username}",
-            headers=headers,
-        )
+        resp = self._api_call("get", f"https://api.twitch.tv/helix/users?login={username}")
         user_data = resp.json()
         if not user_data.get("data"):
             raise ValueError(f"User {username} not found")
 
         target_user_id = user_data["data"][0]["id"]
 
-        httpx.post(
+        self._api_call(
+            "post",
             f"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={self.user_id}&to_broadcaster_id={target_user_id}&moderator_id={self.user_id}",
-            headers=headers,
         )
 
     def get_user_id(self, username: str) -> str | None:
         """Get a user's ID from their username."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-        resp = httpx.get(
-            f"https://api.twitch.tv/helix/users?login={username}",
-            headers=headers,
-        )
+        resp = self._api_call("get", f"https://api.twitch.tv/helix/users?login={username}")
         user_data = resp.json()
         if user_data.get("data"):
             return user_data["data"][0]["id"]
@@ -320,15 +278,8 @@ class TwitchClient:
 
     def get_streams_by_game(self, game_id: str, count: int = 20) -> list[dict]:
         """Get live streams for a specific game/category."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-        resp = httpx.get(
-            f"https://api.twitch.tv/helix/streams?game_id={game_id}&first={count}",
-            headers=headers,
+        resp = self._api_call(
+            "get", f"https://api.twitch.tv/helix/streams?game_id={game_id}&first={count}"
         )
         data = resp.json()
         return [
@@ -345,22 +296,15 @@ class TwitchClient:
 
     def start_raid(self, target_username: str) -> dict:
         """Start a raid to another channel."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-
         # Get target user ID
         target_user_id = self.get_user_id(target_username)
         if not target_user_id:
             raise ValueError(f"User {target_username} not found")
 
         # Start the raid
-        resp = httpx.post(
+        resp = self._api_call(
+            "post",
             f"https://api.twitch.tv/helix/raids?from_broadcaster_id={self.user_id}&to_broadcaster_id={target_user_id}",
-            headers=headers,
         )
 
         if resp.status_code >= 400:
@@ -377,16 +321,8 @@ class TwitchClient:
 
     def cancel_raid(self) -> str:
         """Cancel an ongoing raid."""
-        import httpx
-
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.oauth_token.replace('oauth:', '')}",
-        }
-
-        resp = httpx.delete(
-            f"https://api.twitch.tv/helix/raids?broadcaster_id={self.user_id}",
-            headers=headers,
+        resp = self._api_call(
+            "delete", f"https://api.twitch.tv/helix/raids?broadcaster_id={self.user_id}"
         )
 
         if resp.status_code >= 400:
