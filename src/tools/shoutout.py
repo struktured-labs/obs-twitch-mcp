@@ -52,37 +52,36 @@ def shoutout_streamer(
         if clips:
             clip = clips[0]
             scene = obs.get_current_scene()
-
-            # Remove old shoutout if present - try multiple times
-            for _ in range(3):
-                try:
-                    obs.remove_source("shoutout-clip")
-                except Exception:
-                    pass
-                try:
-                    obs.client.remove_input("shoutout-clip")
-                except Exception:
-                    pass
-
-            # Create browser source with clip embed
             embed_url = f"{clip['embed_url']}&parent=localhost&autoplay=true&muted=false"
-            obs.create_browser_source(scene, "shoutout-clip", embed_url, 640, 360)
 
-            # Position in corner
-            item_id = obs.client.get_scene_item_id(scene, "shoutout-clip").scene_item_id
-            obs.set_scene_item_transform(scene, item_id, 1600, 100, alignment=9)  # Top-right
+            # Try to edit existing source first, create if doesn't exist
+            try:
+                obs.set_input_settings("shoutout-clip", {"url": embed_url})
+                # Make sure it's visible
+                try:
+                    item_id = obs.client.get_scene_item_id(scene, "shoutout-clip").scene_item_id
+                    obs.set_scene_item_enabled(scene, item_id, True)
+                except Exception:
+                    pass
+            except Exception:
+                # Source doesn't exist, create it
+                obs.create_browser_source(scene, "shoutout-clip", embed_url, 640, 360)
+                # Position in corner
+                item_id = obs.client.get_scene_item_id(scene, "shoutout-clip").scene_item_id
+                obs.set_scene_item_transform(scene, item_id, 1600, 100, alignment=9)  # Top-right
 
             result += f" with clip: {clip['title']}"
 
-            # Schedule removal
-            async def remove_after_delay():
+            # Schedule hiding (not removal)
+            async def hide_after_delay():
                 await asyncio.sleep(duration_seconds)
                 try:
-                    obs.remove_source("shoutout-clip")
+                    item_id = obs.client.get_scene_item_id(scene, "shoutout-clip").scene_item_id
+                    obs.set_scene_item_enabled(scene, item_id, False)
                 except Exception:
                     pass
 
-            asyncio.create_task(remove_after_delay())
+            asyncio.create_task(hide_after_delay())
         else:
             result += " (no clips found)"
 

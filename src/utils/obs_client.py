@@ -110,6 +110,24 @@ class OBSClient:
         """Update text on a text source."""
         self.client.set_input_settings(source_name, {"text": text}, True)
 
+    def set_input_settings(self, source_name: str, settings: dict, overlay: bool = True) -> None:
+        """Update settings on any input/source.
+
+        Args:
+            source_name: Name of the source to update
+            settings: Dict of settings to update
+            overlay: If True, merge with existing settings. If False, replace all.
+        """
+        self.client.set_input_settings(source_name, settings, overlay)
+
+    def get_input_settings(self, source_name: str) -> dict:
+        """Get current settings for an input/source."""
+        result = self.client.get_input_settings(source_name)
+        return {
+            "settings": result.input_settings,
+            "kind": result.input_kind,
+        }
+
     def remove_source(self, source_name: str) -> None:
         """Remove a source completely from OBS (from all scenes and the input list)."""
         # First, remove the scene item from ALL scenes that reference it

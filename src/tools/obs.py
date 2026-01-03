@@ -100,6 +100,44 @@ def obs_update_text(source_name: str, text: str) -> str:
 
 
 @mcp.tool()
+def obs_edit_source(source_name: str, settings: dict) -> str:
+    """
+    Edit settings on an existing source.
+
+    This updates settings without needing to remove and recreate the source.
+    Settings are merged with existing ones (overlay mode).
+
+    Args:
+        source_name: Name of the source to edit
+        settings: Dict of settings to update. Common settings:
+            - browser_source: {"url": "...", "width": 1920, "height": 1080}
+            - ffmpeg_source: {"local_file": "...", "looping": true}
+            - text_ft2_source_v2: {"text": "..."}
+            - image_source: {"file": "..."}
+
+    Example:
+        obs_edit_source("my-browser", {"url": "https://newurl.com"})
+    """
+    client = get_obs_client()
+    client.set_input_settings(source_name, settings)
+    return f"Updated settings on '{source_name}': {settings}"
+
+
+@mcp.tool()
+def obs_get_source_settings(source_name: str) -> dict:
+    """
+    Get current settings for a source.
+
+    Useful for seeing what settings are available to edit.
+
+    Args:
+        source_name: Name of the source to inspect
+    """
+    client = get_obs_client()
+    return client.get_input_settings(source_name)
+
+
+@mcp.tool()
 def obs_remove_source(source_name: str) -> str:
     """Remove a source completely from OBS (from all scenes and input list)."""
     client = get_obs_client()
