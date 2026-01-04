@@ -328,3 +328,89 @@ class TwitchClient:
         if resp.status_code >= 400:
             return f"Cancel raid failed: {resp.status_code}"
         return "Raid cancelled"
+
+    def create_clip(self, has_delay: bool = False) -> dict:
+        """
+        Create a clip from the current live stream.
+
+        Args:
+            has_delay: If True, adds a delay before capturing (for stream delay compensation)
+
+        Returns:
+            Dict with clip ID and edit URL
+        """
+        resp = self._api_call(
+            "post",
+            f"https://api.twitch.tv/helix/clips?broadcaster_id={self.user_id}&has_delay={str(has_delay).lower()}",
+        )
+
+        if resp.status_code >= 400:
+            raise ValueError(f"Clip creation failed: {resp.status_code} - {resp.text}")
+
+        data = resp.json()
+        if data.get("data"):
+            return {
+                "id": data["data"][0]["id"],
+                "edit_url": data["data"][0]["edit_url"],
+            }
+        raise ValueError("Clip creation failed: no data returned")
+
+    def get_clip(self, clip_id: str) -> dict | None:
+        """
+        Get details for a specific clip by ID.
+
+        Args:
+            clip_id: The clip ID to look up
+
+        Returns:
+            Clip details or None if not found
+        """
+        resp = self._api_call(
+            "get", f"https://api.twitch.tv/helix/clips?id={clip_id}"
+        )
+        data = resp.json()
+        if data.get("data"):
+            c = data["data"][0]
+            return {
+                "id": c["id"],
+                "url": c["url"],
+                "embed_url": c["embed_url"],
+                "broadcaster_name": c["broadcaster_name"],
+                "creator_name": c["creator_name"],
+                "title": c["title"],
+                "view_count": c["view_count"],
+                "created_at": c["created_at"],
+                "thumbnail_url": c["thumbnail_url"],
+                "duration": c["duration"],
+                "video_url": c.get("video_id", ""),
+            }
+        return None
+
+    def get_my_clips(self, count: int = 10) -> list[dict]:
+        """
+        Get clips from own channel.
+
+        Args:
+            count: Number of clips to return
+
+        Returns:
+            List of clip details
+        """
+        resp = self._api_call(
+            "get", f"https://api.twitch.tv/helix/clips?broadcaster_id={self.user_id}&first={count}"
+        )
+        data = resp.json()
+        return [
+            {
+                "id": c["id"],
+                "url": c["url"],
+                "embed_url": c["embed_url"],
+                "title": c["title"],
+                "view_count": c["view_count"],
+                "created_at": c["created_at"],
+                "thumbnail_url": c["thumbnail_url"],
+                "duration": c["duration"],
+                "creator_name": c["creator_name"],
+            }
+            for c in data.get("data", [])
+        ]

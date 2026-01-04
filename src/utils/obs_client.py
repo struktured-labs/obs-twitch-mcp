@@ -243,3 +243,67 @@ class OBSClient:
         )
         item_id = self.client.get_scene_item_id(scene_name, source_name).scene_item_id
         return item_id
+
+    # Replay Buffer methods
+    def get_replay_buffer_status(self) -> dict:
+        """Get replay buffer status."""
+        try:
+            result = self.client.get_replay_buffer_status()
+            return {
+                "active": result.output_active,
+            }
+        except Exception as e:
+            return {"active": False, "error": str(e)}
+
+    def start_replay_buffer(self) -> None:
+        """Start the replay buffer."""
+        self.client.start_replay_buffer()
+
+    def stop_replay_buffer(self) -> None:
+        """Stop the replay buffer."""
+        self.client.stop_replay_buffer()
+
+    def save_replay_buffer(self) -> str:
+        """Save the current replay buffer. Returns the saved file path."""
+        result = self.client.save_replay_buffer()
+        # Wait a moment for the file to be saved
+        import time
+        time.sleep(0.5)
+        # Get the last replay path
+        try:
+            output = self.client.get_last_replay_buffer_replay()
+            return output.saved_replay_path
+        except Exception:
+            return "Replay saved (path unavailable)"
+
+    # Recording methods
+    def get_record_status(self) -> dict:
+        """Get recording status."""
+        try:
+            result = self.client.get_record_status()
+            return {
+                "active": result.output_active,
+                "paused": result.output_paused,
+                "timecode": result.output_timecode,
+                "duration": result.output_duration,
+                "bytes": result.output_bytes,
+            }
+        except Exception as e:
+            return {"active": False, "error": str(e)}
+
+    def start_record(self) -> None:
+        """Start recording."""
+        self.client.start_record()
+
+    def stop_record(self) -> str:
+        """Stop recording and return the output file path."""
+        result = self.client.stop_record()
+        return result.output_path
+
+    def pause_record(self) -> None:
+        """Pause recording."""
+        self.client.pause_record()
+
+    def resume_record(self) -> None:
+        """Resume recording."""
+        self.client.resume_record()

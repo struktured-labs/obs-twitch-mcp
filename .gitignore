@@ -9,3 +9,4 @@ dist/
 build/
 logs/
 .twitch_token.json
+*.log
