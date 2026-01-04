@@ -269,14 +269,6 @@ async def handle_claude_badge(request):
     return web.Response(text="Badge not found", status=404)
 
 
-async def handle_nahnegnal_qte(request):
-    """Serve the nahnegnal QTE animation HTML."""
-    html_path = Path(__file__).parent / "assets" / "nahnegnal-qte.html"
-    if html_path.exists():
-        return web.FileResponse(html_path)
-    return web.Response(text="Animation not found", status=404)
-
-
 async def start_background_tasks(app):
     print(f"Starting IRC listener for #{CHANNEL}...")
     app["irc_task"] = asyncio.create_task(irc_listener())
@@ -303,7 +295,6 @@ def main():
     app.router.add_get("/health", handle_health)
     app.router.add_get("/countdown", handle_countdown)
     app.router.add_get("/claude-badge", handle_claude_badge)
-    app.router.add_get("/nahnegnal-qte", handle_nahnegnal_qte)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
 

@@ -10,3 +10,13 @@ build/
 logs/
 .twitch_token.json
 *.log
+
+# User-specific assets (kept locally, not tracked)
+assets/welcome-*.html
+assets/animated-*.html
+assets/*-profile.png
+assets/nahn-*.html
+assets/nahnegnal-*.html
+assets/womp-womp-*.html
+assets/pngtuber-*.html
+assets/redblackmage-*.png
