@@ -414,3 +414,149 @@ class TwitchClient:
             }
             for c in data.get("data", [])
         ]
+
+    # Video Upload Methods
+
+    def upload_video(
+        self,
+        file_path: str,
+        title: str,
+        description: str = "",
+    ) -> dict:
+        """
+        Upload a video file to Twitch.
+
+        Args:
+            file_path: Path to the video file
+            title: Video title
+            description: Video description
+
+        Returns:
+            Dict with video ID and URL
+        """
+        import os
+
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Video file not found: {file_path}")
+
+        file_size = os.path.getsize(file_path)
+
+        # Step 1: Create video entry
+        create_resp = self._api_call(
+            "post",
+            "https://api.twitch.tv/helix/videos",
+            params={
+                "title": title,
+                "description": description,
+            },
+        )
+
+        if create_resp.status_code >= 400:
+            raise ValueError(f"Failed to create video: {create_resp.status_code} - {create_resp.text}")
+
+        video_data = create_resp.json()["data"][0]
+        video_id = video_data["id"]
+        upload_url = video_data["upload_url"]
+
+        # Step 2: Upload the video file in chunks
+        chunk_size = 25 * 1024 * 1024  # 25MB chunks
+
+        with open(file_path, "rb") as f:
+            part = 1
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+
+                # Upload chunk
+                upload_resp = httpx.put(
+                    upload_url,
+                    params={"part": part, "upload_id": video_id},
+                    content=chunk,
+                    headers={"Content-Type": "application/octet-stream"},
+                    timeout=300.0,  # 5 min timeout for large chunks
+                )
+
+                if upload_resp.status_code >= 400:
+                    raise ValueError(f"Upload chunk {part} failed: {upload_resp.status_code}")
+
+                part += 1
+
+        # Step 3: Complete the upload
+        complete_resp = httpx.post(
+            upload_url,
+            params={"upload_id": video_id},
+            headers={
+                "Client-ID": self.client_id,
+                "Authorization": f"Bearer {self.access_token}",
+            },
+            timeout=60.0,
+        )
+
+        return {
+            "video_id": video_id,
+            "url": f"https://www.twitch.tv/videos/{video_id}",
+            "status": "uploaded",
+        }
+
+    def get_videos(self, count: int = 10) -> list[dict]:
+        """
+        Get videos from own channel.
+
+        Args:
+            count: Number of videos to return
+
+        Returns:
+            List of video details
+        """
+        resp = self._api_call(
+            "get",
+            f"https://api.twitch.tv/helix/videos?user_id={self.user_id}&first={count}",
+        )
+        data = resp.json()
+        return [
+            {
+                "id": v["id"],
+                "title": v["title"],
+                "description": v["description"],
+                "url": v["url"],
+                "duration": v["duration"],
+                "view_count": v["view_count"],
+                "created_at": v["created_at"],
+                "published_at": v["published_at"],
+                "thumbnail_url": v["thumbnail_url"],
+                "type": v["type"],
+            }
+            for v in data.get("data", [])
+        ]
+
+    def get_video(self, video_id: str) -> dict | None:
+        """
+        Get details for a specific video.
+
+        Args:
+            video_id: The video ID
+
+        Returns:
+            Video details or None if not found
+        """
+        resp = self._api_call(
+            "get",
+            f"https://api.twitch.tv/helix/videos?id={video_id}",
+        )
+        data = resp.json()
+        if data.get("data"):
+            v = data["data"][0]
+            return {
+                "id": v["id"],
+                "title": v["title"],
+                "description": v["description"],
+                "url": v["url"],
+                "duration": v["duration"],
+                "view_count": v["view_count"],
+                "created_at": v["created_at"],
+                "published_at": v["published_at"],
+                "thumbnail_url": v["thumbnail_url"],
+                "type": v["type"],
+            }
+        return None
