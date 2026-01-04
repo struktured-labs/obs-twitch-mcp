@@ -3,10 +3,12 @@ Video upload tools.
 
 Provides tools for uploading videos to various platforms.
 Currently supports:
-- Twitch (via Helix API)
+- YouTube (via Data API v3)
+
+Limited support:
+- Twitch (no API upload - manual only)
 
 Future platforms:
-- YouTube
 - Rumble
 - PeerTube
 - Instagram
@@ -14,6 +16,7 @@ Future platforms:
 """
 
 from ..app import mcp, get_twitch_client
+from ..utils.youtube_client import get_youtube_client
 
 
 # =============================================================================
@@ -87,6 +90,110 @@ def get_twitch_video_info(video_id: str) -> dict:
 
 
 # =============================================================================
+# YouTube Video Upload Tools
+# =============================================================================
+
+
+@mcp.tool()
+def upload_video_to_youtube(
+    file_path: str,
+    title: str,
+    description: str = "",
+    tags: str = "",
+    privacy: str = "unlisted",
+) -> dict:
+    """
+    Upload a video file to YouTube.
+
+    Requires OAuth2 setup:
+    1. Create project in Google Cloud Console
+    2. Enable YouTube Data API v3
+    3. Create OAuth2 credentials (Desktop app)
+    4. Download client secrets JSON as .youtube_client_secrets.json
+    5. First upload will open browser for authorization
+
+    Args:
+        file_path: Path to the video file to upload
+        title: Video title
+        description: Video description
+        tags: Comma-separated tags (e.g., "gaming,stream,clip")
+        privacy: "public", "private", or "unlisted" (default: unlisted)
+
+    Returns:
+        Dict with video ID and URL on success.
+    """
+    try:
+        client = get_youtube_client()
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+
+        result = client.upload_video(
+            file_path=file_path,
+            title=title,
+            description=description,
+            tags=tag_list,
+            privacy_status=privacy,
+        )
+        return {
+            "status": "success",
+            "platform": "youtube",
+            "video_id": result["video_id"],
+            "url": result["url"],
+            "message": f"Video uploaded to YouTube: {result['url']}",
+        }
+    except FileNotFoundError as e:
+        return {
+            "status": "error",
+            "platform": "youtube",
+            "message": str(e),
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "platform": "youtube",
+            "message": f"Upload failed: {e}",
+        }
+
+
+@mcp.tool()
+def get_my_youtube_videos(count: int = 10) -> list[dict]:
+    """
+    Get videos from your YouTube channel.
+
+    Args:
+        count: Number of videos to return (default 10)
+
+    Returns:
+        List of video details including title, URL, published date.
+    """
+    try:
+        client = get_youtube_client()
+        return client.get_my_videos(count=count)
+    except Exception as e:
+        return [{"status": "error", "message": str(e)}]
+
+
+@mcp.tool()
+def get_youtube_video_info(video_id: str) -> dict:
+    """
+    Get details about a specific YouTube video.
+
+    Args:
+        video_id: The YouTube video ID
+
+    Returns:
+        Video details or error if not found.
+    """
+    try:
+        client = get_youtube_client()
+        video = client.get_video(video_id)
+        if video:
+            return video
+        return {"status": "error", "message": f"Video {video_id} not found"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+# =============================================================================
 # Generic Upload Tool (Platform Router)
 # =============================================================================
 
@@ -102,9 +209,10 @@ def upload_video(
     Upload a video to a specified platform.
 
     This is a generic upload tool that routes to the appropriate platform.
-    Currently supports: twitch
+    Currently supports: youtube
 
-    Future platforms: youtube, rumble, peertube, instagram, tiktok
+    Limited: twitch (no API upload)
+    Future platforms: rumble, peertube, instagram, tiktok
 
     Args:
         file_path: Path to the video file to upload
@@ -120,11 +228,7 @@ def upload_video(
     if platform == "twitch":
         return upload_video_to_twitch(file_path, title, description)
     elif platform in ("youtube", "yt"):
-        return {
-            "status": "error",
-            "platform": platform,
-            "message": "YouTube upload not yet implemented. Coming soon!",
-        }
+        return upload_video_to_youtube(file_path, title, description)
     elif platform == "rumble":
         return {
             "status": "error",
@@ -153,5 +257,5 @@ def upload_video(
         return {
             "status": "error",
             "platform": platform,
-            "message": f"Unknown platform: {platform}. Supported: twitch",
+            "message": f"Unknown platform: {platform}. Supported: youtube, twitch (limited)",
         }
