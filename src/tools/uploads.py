@@ -30,8 +30,11 @@ def upload_video_to_twitch(
     """
     Upload a video file to Twitch.
 
-    This uploads a local video file (like an OBS replay buffer clip) to your
-    Twitch channel as a video/highlight.
+    NOTE: Twitch Helix API does not support video uploads. The old v5 API
+    had this feature but it was deprecated. Videos must be uploaded manually
+    via the Twitch Video Producer web interface.
+
+    For creating clips from live streams, use twitch_create_clip instead.
 
     Args:
         file_path: Path to the video file to upload
@@ -39,35 +42,15 @@ def upload_video_to_twitch(
         description: Optional description for the video
 
     Returns:
-        Dict with video ID and URL on success, or error details on failure.
+        Error explaining the limitation.
     """
-    client = get_twitch_client()
-
-    try:
-        result = client.upload_video(
-            file_path=file_path,
-            title=title,
-            description=description,
-        )
-        return {
-            "status": "success",
-            "platform": "twitch",
-            "video_id": result["video_id"],
-            "url": result["url"],
-            "message": f"Video uploaded to Twitch: {result['url']}",
-        }
-    except FileNotFoundError as e:
-        return {
-            "status": "error",
-            "platform": "twitch",
-            "message": str(e),
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "platform": "twitch",
-            "message": f"Upload failed: {e}",
-        }
+    return {
+        "status": "error",
+        "platform": "twitch",
+        "message": "Twitch API does not support video uploads. Use the Video Producer at https://dashboard.twitch.tv/content/video-producer to upload manually, or use twitch_create_clip to clip from live streams.",
+        "file_path": file_path,
+        "suggested_title": title,
+    }
 
 
 @mcp.tool()
