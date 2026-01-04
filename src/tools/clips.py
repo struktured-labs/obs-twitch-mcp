@@ -80,6 +80,56 @@ def obs_save_replay() -> dict:
     }
 
 
+@mcp.tool()
+def obs_clip() -> dict:
+    """
+    Create a local clip using OBS replay buffer (not Twitch API).
+
+    This is the preferred way to clip moments - it saves locally with
+    full quality and doesn't require Twitch. Automatically starts the
+    replay buffer if it's not already running.
+
+    The clip captures the last N seconds as configured in OBS settings
+    (Settings > Output > Replay Buffer > Maximum Replay Time).
+
+    Returns:
+        Dict with status and file path to the saved clip.
+    """
+    client = get_obs_client()
+
+    # Check if replay buffer is active
+    status = client.get_replay_buffer_status()
+
+    if not status.get("active"):
+        # Start replay buffer and wait for it to initialize
+        try:
+            client.start_replay_buffer()
+            time.sleep(1)  # Give it a moment to start
+            return {
+                "status": "started",
+                "message": "Replay buffer was not running. Started it now. Wait a few seconds for it to buffer, then run obs_clip again to save.",
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to start replay buffer: {e}",
+            }
+
+    # Save the replay
+    try:
+        saved_path = client.save_replay_buffer()
+        return {
+            "status": "clipped",
+            "file_path": saved_path,
+            "message": "Clip saved locally via OBS replay buffer",
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to save clip: {e}",
+        }
+
+
 # =============================================================================
 # OBS Recording Tools
 # =============================================================================
