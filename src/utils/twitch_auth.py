@@ -111,7 +111,16 @@ def authenticate(client_id: str, scopes: list[str] | None = None) -> str:
     Returns the access token.
     """
     if scopes is None:
-        scopes = ["chat:edit", "chat:read", "channel:manage:broadcast", "moderator:manage:banned_users"]
+        scopes = [
+            "chat:edit",
+            "chat:read",
+            "channel:manage:broadcast",
+            "channel:manage:raids",
+            "moderator:manage:banned_users",
+            "moderator:manage:chat_messages",
+            "moderator:manage:shoutouts",
+            "clips:edit",
+        ]
 
     # Check for existing valid token
     existing = load_token()
