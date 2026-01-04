@@ -9,6 +9,8 @@ dist/
 build/
 logs/
 .twitch_token.json
+.youtube_token.json
+.youtube_client_secrets.json
 *.log
 
 # User-specific assets (kept locally, not tracked)
