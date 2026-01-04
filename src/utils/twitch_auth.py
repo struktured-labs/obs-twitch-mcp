@@ -116,6 +116,7 @@ def authenticate(client_id: str, scopes: list[str] | None = None) -> str:
             "chat:read",
             "channel:manage:broadcast",
             "channel:manage:raids",
+            "channel:manage:videos",
             "moderator:manage:banned_users",
             "moderator:manage:chat_messages",
             "moderator:manage:shoutouts",

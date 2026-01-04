@@ -8,7 +8,7 @@ and real-time game translation.
 from .app import mcp
 
 # Import tools to register them with the mcp instance
-from .tools import obs, chat, moderation, twitch, translation, alerts, shoutout, clips  # noqa: F401
+from .tools import obs, chat, moderation, twitch, translation, alerts, shoutout, clips, uploads  # noqa: F401
 
 
 def main():
