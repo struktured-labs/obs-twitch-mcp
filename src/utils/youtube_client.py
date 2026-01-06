@@ -49,14 +49,33 @@ class YouTubeClient:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                if not CLIENT_SECRETS_FILE.exists():
-                    raise FileNotFoundError(
-                        f"YouTube client secrets not found at {CLIENT_SECRETS_FILE}. "
-                        "Download from Google Cloud Console and save as .youtube_client_secrets.json"
+                # Try env vars first, then JSON file
+                client_id = os.environ.get("YOUTUBE_CLIENT_ID")
+                client_secret = os.environ.get("YOUTUBE_CLIENT_SECRET")
+
+                if client_id and client_secret:
+                    # Build client config from env vars
+                    client_config = {
+                        "installed": {
+                            "client_id": client_id,
+                            "client_secret": client_secret,
+                            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                            "token_uri": "https://oauth2.googleapis.com/token",
+                            "redirect_uris": ["http://localhost"],
+                        }
+                    }
+                    flow = InstalledAppFlow.from_client_config(client_config, YOUTUBE_UPLOAD_SCOPE)
+                elif CLIENT_SECRETS_FILE.exists():
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        str(CLIENT_SECRETS_FILE), YOUTUBE_UPLOAD_SCOPE
                     )
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    str(CLIENT_SECRETS_FILE), YOUTUBE_UPLOAD_SCOPE
-                )
+                else:
+                    raise FileNotFoundError(
+                        "YouTube credentials not found. Either set YOUTUBE_CLIENT_ID and "
+                        "YOUTUBE_CLIENT_SECRET env vars, or download client secrets JSON from "
+                        "Google Cloud Console and save as .youtube_client_secrets.json"
+                    )
+
                 creds = flow.run_local_server(port=8090)
 
             # Save credentials
