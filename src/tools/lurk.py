@@ -81,21 +81,5 @@ def hide_lurk_animation() -> str:
         return "No lurk animation to hide"
 
 
-@mcp.tool()
-def handle_chat_command(username: str, message: str) -> str:
-    """
-    Handle a chat command from a user.
-
-    Supported commands:
-        !lurk - Show lurk animation for 10 seconds
-
-    Args:
-        username: The username who sent the command
-        message: The full message text
-    """
-    message_lower = message.lower().strip()
-
-    if message_lower == "!lurk" or message_lower.startswith("!lurk "):
-        return show_lurk_animation(username, 10)
-
-    return f"Unknown command: {message}"
+# Note: handle_chat_command is now in commands.py with a full command system.
+# This module just provides lurk animation tools.

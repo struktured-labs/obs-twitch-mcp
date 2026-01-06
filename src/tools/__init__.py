@@ -9,7 +9,15 @@ from . import twitch
 from . import translation
 from . import alerts
 from . import shoutout
-from . import chat_commands
+from . import lurk
+from . import clips
+from . import uploads
+from . import vod
+from . import commands
+from . import health
+from . import autoclip
+from . import scheduler
+from . import engagement
 
 __all__ = [
     "obs",
@@ -19,5 +27,13 @@ __all__ = [
     "translation",
     "alerts",
     "shoutout",
-    "chat_commands",
+    "lurk",
+    "clips",
+    "uploads",
+    "vod",
+    "commands",
+    "health",
+    "autoclip",
+    "scheduler",
+    "engagement",
 ]
