@@ -4,13 +4,17 @@ Twitch API and IRC client wrapper.
 
 import socket
 import ssl
+import time
 from dataclasses import dataclass, field
 from typing import Callable
 
 import httpx
 
 from . import chat_logger
+from .logger import get_logger
 from .twitch_auth import refresh_token, save_token, load_token
+
+logger = get_logger("twitch_client")
 
 
 @dataclass
@@ -40,8 +44,10 @@ class TwitchClient:
         """Refresh the OAuth token. Returns True if successful."""
         token_data = load_token()
         if not token_data or not token_data.get("refresh_token"):
+            logger.warning("Cannot refresh token: no refresh_token available")
             return False
         if not self.client_secret:
+            logger.warning("Cannot refresh token: client_secret not provided")
             return False
         try:
             new_token = refresh_token(
@@ -50,16 +56,17 @@ class TwitchClient:
             save_token(new_token)
             self.oauth_token = new_token["access_token"]
             self._user_id = None  # Reset cached user ID
-            print(f"Token auto-refreshed successfully")
+            logger.info("Token auto-refreshed successfully")
             return True
         except Exception as e:
-            print(f"Token refresh failed: {e}")
+            logger.error(f"Token refresh failed: {e}")
             return False
 
     def _api_call(self, method: str, url: str, **kwargs) -> httpx.Response:
-        """Make an API call with auto-retry on 401."""
+        """Make an API call with auto-retry on 401 and exponential backoff."""
         # Extract extra headers once (don't pop on each iteration)
         extra_headers = kwargs.pop("headers", {})
+        backoff = 1  # Start with 1 second backoff
 
         for attempt in range(3):
             headers = {
@@ -71,11 +78,16 @@ class TwitchClient:
             resp = getattr(httpx, method)(url, headers=headers, **kwargs)
 
             if resp.status_code == 401:
-                print(f"API call failed with 401, refreshing token (attempt {attempt + 1}/3)")
+                logger.warning(f"API call to {url} failed with 401 (attempt {attempt + 1}/3)")
                 if self._refresh_token():
+                    time.sleep(backoff)
+                    backoff *= 2  # Exponential backoff
                     continue  # Retry with new token
                 else:
+                    logger.error("Token refresh failed, giving up")
                     break  # Refresh failed, give up
+            elif resp.status_code >= 400:
+                logger.warning(f"API call to {url} failed: {resp.status_code} - {resp.text[:200]}")
             return resp
         return resp  # Return last response even if failed
 
@@ -128,8 +140,8 @@ class TwitchClient:
         for handler in self._message_handlers:
             try:
                 handler(msg)
-            except Exception:
-                pass  # Don't let handler errors break the chain
+            except Exception as e:
+                logger.warning(f"Message handler error: {e}")  # Log but don't break chain
 
     def add_message_handler(self, handler: Callable[[ChatMessage], None]) -> None:
         """Add a handler for incoming chat messages."""

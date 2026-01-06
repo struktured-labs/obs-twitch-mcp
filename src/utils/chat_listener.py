@@ -4,6 +4,7 @@ Background IRC listener for Twitch chat.
 Connects to IRC and logs all incoming messages.
 """
 
+import os
 import re
 import socket
 import ssl
@@ -13,7 +14,11 @@ from dataclasses import dataclass
 from typing import Callable
 
 from . import chat_logger
+from .logger import get_logger
 from .twitch_client import ChatMessage
+from .twitch_auth import get_valid_token
+
+logger = get_logger("chat_listener")
 
 
 @dataclass
@@ -40,12 +45,27 @@ class ChatListener:
             self._handlers = []
         self._handlers.append(handler)
 
+    def _refresh_token(self) -> str | None:
+        """Try to get a fresh token for reconnection."""
+        client_id = os.getenv("TWITCH_CLIENT_ID", "")
+        client_secret = os.getenv("TWITCH_CLIENT_SECRET", "")
+        if client_id and client_secret:
+            try:
+                new_token = get_valid_token(client_id, client_secret)
+                self.oauth_token = new_token
+                logger.info("Token refreshed for chat reconnection")
+                return new_token
+            except Exception as e:
+                logger.warning(f"Token refresh failed: {e}")
+        return None
+
     def _connect(self) -> None:
         """Connect to Twitch IRC."""
         token = self.oauth_token
         if not token.startswith("oauth:"):
             token = f"oauth:{token}"
 
+        logger.debug(f"Connecting to Twitch IRC for #{self.channel}")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         ctx = ssl.create_default_context()
         self._socket = ctx.wrap_socket(sock, server_hostname="irc.chat.twitch.tv")
@@ -61,6 +81,7 @@ class ChatListener:
 
         # Join channel
         self._socket.send(f"JOIN #{self.channel}\r\n".encode())
+        logger.debug("IRC connection established")
 
     def _parse_message(self, raw: str) -> ChatMessage | None:
         """Parse an IRC message into a ChatMessage."""
@@ -125,20 +146,28 @@ class ChatListener:
                         for handler in (self._handlers or []):
                             try:
                                 handler(msg)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.warning(f"Chat handler error: {e}")
 
             except socket.timeout:
                 # Normal timeout, just continue
                 continue
             except Exception as e:
                 if self._running:
-                    print(f"Chat listener error: {e}")
-                    time.sleep(5)  # Brief pause before reconnecting
-                    try:
-                        self._connect()
-                    except Exception:
-                        pass
+                    logger.error(f"Chat listener error: {e}")
+                    # Try to refresh token before reconnecting
+                    self._refresh_token()
+                    backoff = 5
+                    for attempt in range(3):
+                        logger.info(f"Reconnecting (attempt {attempt + 1}/3) in {backoff}s...")
+                        time.sleep(backoff)
+                        try:
+                            self._connect()
+                            logger.info("Reconnected successfully")
+                            break
+                        except Exception as reconnect_err:
+                            logger.warning(f"Reconnect attempt {attempt + 1} failed: {reconnect_err}")
+                            backoff *= 2  # Exponential backoff
 
     def start(self) -> None:
         """Start the listener in a background thread."""
@@ -149,7 +178,7 @@ class ChatListener:
         self._connect()
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
-        print(f"Chat listener started for #{self.channel}")
+        logger.info(f"Chat listener started for #{self.channel}")
 
     def stop(self) -> None:
         """Stop the listener."""
@@ -157,11 +186,11 @@ class ChatListener:
         if self._socket:
             try:
                 self._socket.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Socket close error (expected): {e}")
         if self._thread:
             self._thread.join(timeout=2.0)
-        print("Chat listener stopped")
+        logger.info("Chat listener stopped")
 
     @property
     def is_running(self) -> bool:
