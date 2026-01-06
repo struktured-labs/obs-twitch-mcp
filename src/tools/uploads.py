@@ -193,6 +193,28 @@ def get_youtube_video_info(video_id: str) -> dict:
         return {"status": "error", "message": str(e)}
 
 
+@mcp.tool()
+def delete_youtube_video(video_id: str) -> dict:
+    """
+    Delete a video from YouTube.
+
+    Args:
+        video_id: The YouTube video ID to delete
+
+    Returns:
+        Success or error status.
+    """
+    try:
+        client = get_youtube_client()
+        client.delete_video(video_id)
+        return {
+            "status": "success",
+            "message": f"Video {video_id} deleted from YouTube",
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 # =============================================================================
 # Generic Upload Tool (Platform Router)
 # =============================================================================

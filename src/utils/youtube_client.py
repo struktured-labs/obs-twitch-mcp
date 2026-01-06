@@ -16,8 +16,12 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 
-# Scopes required for uploading videos
-YOUTUBE_UPLOAD_SCOPE = ["https://www.googleapis.com/auth/youtube.upload"]
+# Scopes required for uploading, reading, and deleting videos
+YOUTUBE_UPLOAD_SCOPE = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/youtube",  # Full access for delete
+]
 
 # Token storage path (same pattern as Twitch)
 TOKEN_FILE = Path(__file__).parent.parent.parent / ".youtube_token.json"
@@ -233,6 +237,19 @@ class YouTubeClient:
             "privacy_status": item["status"]["privacyStatus"],
             "thumbnail_url": item["snippet"]["thumbnails"].get("default", {}).get("url", ""),
         }
+
+    def delete_video(self, video_id: str) -> bool:
+        """
+        Delete a video from YouTube.
+
+        Args:
+            video_id: The YouTube video ID to delete
+
+        Returns:
+            True if deleted successfully
+        """
+        self.youtube.videos().delete(id=video_id).execute()
+        return True
 
 
 # Singleton instance
