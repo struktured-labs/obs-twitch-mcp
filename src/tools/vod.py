@@ -23,10 +23,26 @@ DEFAULT_RECORDING_DIR = Path.home() / "Videos"
 
 
 def _get_recording_dir() -> Path:
-    """Get the OBS recording directory."""
+    """Get the OBS recording directory from OBS config or env var."""
+    # Check env var first
     custom_dir = os.getenv("OBS_RECORDING_DIR")
     if custom_dir:
         return Path(custom_dir)
+
+    # Try to read from OBS config
+    obs_config_paths = list(Path.home().glob(".config/obs-studio/basic/profiles/*/basic.ini"))
+    for config_path in obs_config_paths:
+        try:
+            with open(config_path) as f:
+                for line in f:
+                    if line.startswith("FilePath="):
+                        path = line.strip().split("=", 1)[1]
+                        if path and Path(path).exists():
+                            logger.debug(f"Using OBS recording path from config: {path}")
+                            return Path(path)
+        except Exception:
+            pass
+
     return DEFAULT_RECORDING_DIR
 
 
