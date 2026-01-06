@@ -15,6 +15,10 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+from .logger import get_logger
+
+logger = get_logger("youtube_client")
+
 
 # Scopes required for uploading, reading, and deleting videos
 YOUTUBE_UPLOAD_SCOPE = [
@@ -45,19 +49,28 @@ class YouTubeClient:
                 with open(TOKEN_FILE) as f:
                     token_data = json.load(f)
                 creds = Credentials.from_authorized_user_info(token_data, YOUTUBE_UPLOAD_SCOPE)
-            except Exception:
-                pass
+                logger.debug("Loaded YouTube token from file")
+            except Exception as e:
+                logger.warning(f"Failed to load YouTube token file: {e}")
 
         # Refresh or get new credentials
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
+                logger.info("YouTube token expired, refreshing...")
+                try:
+                    creds.refresh(Request())
+                    logger.info("YouTube token refreshed successfully")
+                except Exception as e:
+                    logger.error(f"YouTube token refresh failed: {e}")
+                    creds = None  # Force re-auth
+
+            if not creds or not creds.valid:
                 # Try env vars first, then JSON file
                 client_id = os.environ.get("YOUTUBE_CLIENT_ID")
                 client_secret = os.environ.get("YOUTUBE_CLIENT_SECRET")
 
                 if client_id and client_secret:
+                    logger.info("Using YouTube credentials from env vars")
                     # Build client config from env vars
                     client_config = {
                         "installed": {
@@ -70,23 +83,41 @@ class YouTubeClient:
                     }
                     flow = InstalledAppFlow.from_client_config(client_config, YOUTUBE_UPLOAD_SCOPE)
                 elif CLIENT_SECRETS_FILE.exists():
+                    logger.info("Using YouTube credentials from secrets file")
                     flow = InstalledAppFlow.from_client_secrets_file(
                         str(CLIENT_SECRETS_FILE), YOUTUBE_UPLOAD_SCOPE
                     )
                 else:
+                    logger.error("No YouTube credentials found")
                     raise FileNotFoundError(
                         "YouTube credentials not found. Either set YOUTUBE_CLIENT_ID and "
                         "YOUTUBE_CLIENT_SECRET env vars, or download client secrets JSON from "
                         "Google Cloud Console and save as .youtube_client_secrets.json"
                     )
 
+                logger.info("Starting YouTube OAuth flow (will open browser)")
                 creds = flow.run_local_server(port=8090)
+                logger.info("YouTube OAuth completed successfully")
 
             # Save credentials
             with open(TOKEN_FILE, "w") as f:
                 f.write(creds.to_json())
+            logger.debug(f"YouTube token saved to {TOKEN_FILE}")
 
         return creds
+
+    def _ensure_credentials_valid(self) -> None:
+        """Ensure credentials are valid, refreshing if needed."""
+        if self._credentials and self._credentials.expired and self._credentials.refresh_token:
+            logger.info("YouTube credentials expired, refreshing proactively")
+            try:
+                self._credentials.refresh(Request())
+                logger.info("YouTube credentials refreshed")
+            except Exception as e:
+                logger.error(f"Proactive refresh failed: {e}")
+                # Force re-init on next use
+                self._youtube = None
+                self._credentials = None
 
     @property
     def youtube(self):
@@ -94,6 +125,9 @@ class YouTubeClient:
         if self._youtube is None:
             self._credentials = self._get_credentials()
             self._youtube = build("youtube", "v3", credentials=self._credentials)
+        else:
+            # Proactively refresh before use
+            self._ensure_credentials_valid()
         return self._youtube
 
     def upload_video(

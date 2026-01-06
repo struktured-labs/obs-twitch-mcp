@@ -11,6 +11,9 @@ from pathlib import Path
 
 import httpx
 
+from .logger import get_logger
+
+logger = get_logger("twitch_auth")
 
 TOKEN_FILE = Path(__file__).parent.parent.parent / ".twitch_token.json"
 
@@ -67,7 +70,7 @@ def save_token(token_data: dict) -> None:
     token_data["saved_at"] = time.time()
     with open(TOKEN_FILE, "w") as f:
         json.dump(token_data, f, indent=2)
-    print(f"Token saved to {TOKEN_FILE}")
+    logger.info(f"Token saved to {TOKEN_FILE}")
 
 
 def load_token() -> dict | None:
@@ -128,15 +131,15 @@ def authenticate(client_id: str, scopes: list[str] | None = None) -> str:
     if existing:
         validation = validate_token(existing.get("access_token", ""))
         if validation:
-            print(f"Existing token valid for user: {validation.get('login')}")
-            print(f"Expires in: {validation.get('expires_in', 0) // 3600} hours")
+            logger.info(f"Existing token valid for user: {validation.get('login')}")
+            logger.info(f"Expires in: {validation.get('expires_in', 0) // 3600} hours")
             return existing["access_token"]
         else:
-            print("Existing token expired, need to re-authenticate")
+            logger.warning("Existing token expired, need to re-authenticate")
 
     # Start device code flow
-    print("Starting Twitch Device Code authentication...")
-    print(f"Requesting scopes: {', '.join(scopes)}")
+    logger.info("Starting Twitch Device Code authentication...")
+    logger.info(f"Requesting scopes: {', '.join(scopes)}")
 
     device_data = get_device_code(client_id, scopes)
 
@@ -146,22 +149,22 @@ def authenticate(client_id: str, scopes: list[str] | None = None) -> str:
     expires_in = device_data["expires_in"]
     interval = device_data.get("interval", 5)
 
-    print("\n" + "=" * 50)
-    print("Go to this URL in your browser:")
-    print(f"\n  {verification_uri}\n")
-    print(f"Enter this code: {user_code}")
-    print("=" * 50)
-    print(f"\nWaiting for authorization (expires in {expires_in} seconds)...")
+    logger.info("=" * 50)
+    logger.info("Go to this URL in your browser:")
+    logger.info(f"  {verification_uri}")
+    logger.info(f"Enter this code: {user_code}")
+    logger.info("=" * 50)
+    logger.info(f"Waiting for authorization (expires in {expires_in} seconds)...")
 
     # Poll for token
     token_data = poll_for_token(client_id, scopes, device_code, interval, expires_in)
 
-    print("\nAuthorization successful!")
+    logger.info("Authorization successful!")
 
     # Validate to get username
     validation = validate_token(token_data["access_token"])
     if validation:
-        print(f"Authenticated as: {validation.get('login')}")
+        logger.info(f"Authenticated as: {validation.get('login')}")
 
     # Save token
     save_token(token_data)
@@ -186,12 +189,15 @@ def get_valid_token(client_id: str, client_secret: str = "", scopes: list[str] |
         # Try to refresh
         if existing.get("refresh_token") and client_secret:
             try:
-                print("Access token expired, refreshing...")
+                logger.info("Access token expired, refreshing...")
                 new_token = refresh_token(client_id, client_secret, existing["refresh_token"])
                 save_token(new_token)
+                logger.info("Token refresh successful")
                 return new_token["access_token"]
             except Exception as e:
-                print(f"Refresh failed: {e}")
+                logger.error(f"Token refresh failed: {e}")
+        elif existing.get("refresh_token") and not client_secret:
+            logger.warning("Have refresh_token but no client_secret - cannot refresh automatically")
 
     # Need full re-auth
     return authenticate(client_id, scopes)
@@ -202,11 +208,11 @@ if __name__ == "__main__":
 
     client_id = os.environ.get("TWITCH_CLIENT_ID")
     if not client_id:
-        print("Error: TWITCH_CLIENT_ID environment variable not set")
-        print("Run: source setenv.sh")
+        logger.error("TWITCH_CLIENT_ID environment variable not set")
+        logger.info("Run: source setenv.sh")
         exit(1)
 
     token = authenticate(client_id)
-    print(f"\nYour access token: {token}")
-    print("\nAdd this to your setenv.sh:")
-    print(f"export TWITCH_OAUTH_TOKEN={token}")
+    logger.info(f"Your access token: {token}")
+    logger.info("Add this to your setenv.sh:")
+    logger.info(f"export TWITCH_OAUTH_TOKEN={token}")
