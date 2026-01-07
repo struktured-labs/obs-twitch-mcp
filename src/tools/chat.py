@@ -80,11 +80,55 @@ def twitch_list_chat_log_dates() -> list[str]:
 
 
 @mcp.tool()
-def twitch_refresh_token() -> str:
+def twitch_refresh_token() -> dict:
     """
     Refresh the Twitch client to pick up a new token.
 
     Call this after running auth.py to update the token without restarting.
     """
     client = refresh_twitch_client()
-    return f"Twitch client refreshed. Channel: {client.channel}"
+    return {
+        "status": "refreshed",
+        "channel": client.channel,
+        "message": "Twitch client and chat listener restarted with fresh token",
+    }
+
+
+@mcp.tool()
+def twitch_reconnect() -> dict:
+    """
+    Reconnect to Twitch with fresh credentials.
+
+    This refreshes the OAuth token, recreates the Twitch client,
+    and restarts the chat listener - all without restarting the MCP server.
+
+    Use this when:
+    - Chat messages aren't sending
+    - Token has expired
+    - IRC connection dropped
+    """
+    from ..utils.twitch_auth import validate_token, load_token
+
+    # Refresh the client (stops listener, gets new token, restarts listener)
+    client = refresh_twitch_client()
+
+    # Validate the new token and get expiry info
+    token_data = load_token()
+    token = token_data.get("access_token", "") if token_data else ""
+    validation = validate_token(token) if token else None
+
+    if validation:
+        expires_hours = validation.get("expires_in", 0) // 3600
+        return {
+            "status": "connected",
+            "channel": client.channel,
+            "user": validation.get("login"),
+            "token_expires_in": f"{expires_hours} hours",
+            "scopes": validation.get("scopes", []),
+        }
+    else:
+        return {
+            "status": "warning",
+            "channel": client.channel,
+            "message": "Reconnected but could not validate token - may need to re-auth",
+        }
