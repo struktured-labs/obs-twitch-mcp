@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+  :root {
+    --bg-color: transparent;
+    --text-color: #ffffff;
+    --text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-size: 18px;
+    --username-size: 16px;
+    --avatar-size: 32px;
+    --message-spacing: 6px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-color);
+    font-family: var(--font-family);
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .chat-container {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: calc(100vh - 20px);
+    overflow: hidden;
+  }
+
+  .chat-container.direction-down {
+    flex-direction: column-reverse;
+    justify-content: flex-start;
+  }
+
+  .chat-messages {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: var(--message-spacing);
+    overflow: hidden;
+  }
+
+  .chat-container.direction-down .chat-messages {
+    flex-direction: column-reverse;
+  }
+
+  .chat-message {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 20px;
+    animation: slideIn 0.2s ease-out;
+    font-size: var(--font-size);
+    line-height: 1.4;
+    max-width: fit-content;
+  }
+
+  .chat-message.no-bg {
+    background: transparent;
+    padding: 4px 0;
+  }
+
+  .avatar {
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .avatar.hidden {
+    display: none;
+  }
+
+  .message-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(-20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  .chat-message.fading {
+    animation: fadeOut 0.3s ease-out forwards;
+  }
+
+  .username {
+    font-weight: 600;
+    font-size: var(--username-size);
+    text-shadow: var(--text-shadow);
+  }
+
+  .message-text {
+    color: var(--text-color);
+    font-size: var(--font-size);
+    text-shadow: var(--text-shadow);
+    word-wrap: break-word;
+  }
+
+  /* Subtle username colors */
+  .color-0 .username { color: #ff8a8a; }
+  .color-1 .username { color: #8ad4ff; }
+  .color-2 .username { color: #ffe08a; }
+  .color-3 .username { color: #ff8aed; }
+  .color-4 .username { color: #8a9fff; }
+  .color-5 .username { color: #c78aff; }
+  .color-6 .username { color: #8affcc; }
+  .color-7 .username { color: #ffb38a; }
+  .color-8 .username { color: #ff8a8a; }
+  .color-9 .username { color: #b8b3ff; }
+  .color-10 .username { color: #ffb3d9; }
+  .color-11 .username { color: #8affb3; }
+
+  /* Special roles - subtle indicators */
+  .broadcaster .username {
+    color: #ffd700;
+  }
+  .broadcaster .username::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #ffd700;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  .moderator .username {
+    color: #00ff7f;
+  }
+  .moderator .username::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #00ff7f;
+    border-radius: 2px;
+    margin-right: 6px;
+  }
+
+  .subscriber .chat-message {
+    background: rgba(100, 65, 165, 0.4);
+  }
+
+  /* Font size variants */
+  .size-small { --font-size: 14px; --username-size: 12px; --avatar-size: 24px; }
+  .size-medium { --font-size: 18px; --username-size: 16px; --avatar-size: 32px; }
+  .size-large { --font-size: 24px; --username-size: 20px; --avatar-size: 40px; }
+
+  /* Background variants */
+  .bg-dark .chat-message { background: rgba(0, 0, 0, 0.75); }
+  .bg-transparent .chat-message { background: transparent; }
+  .bg-subtle .chat-message { background: rgba(0, 0, 0, 0.3); }
+</style>
+</head>
+<body>
+
+<div class="chat-container" id="container">
+  <div class="chat-messages" id="messages">
+    <!-- Messages will be inserted here -->
+  </div>
+</div>
+
+<script>
+// Parse URL parameters
+const params = new URLSearchParams(window.location.search);
+const CONFIG = {
+  maxMessages: parseInt(params.get('maxmsgs') || '12'),
+  fadeSeconds: parseInt(params.get('fade') || '45'),
+  showAvatars: params.get('avatars') !== 'false',
+  direction: params.get('dir') || 'up',
+  size: params.get('size') || 'medium',
+  background: params.get('bg') || 'default',
+  sseEndpoint: params.get('sse') || 'http://localhost:8765/events',
+};
+
+// Apply configuration
+const container = document.getElementById('container');
+container.classList.add(`size-${CONFIG.size}`);
+if (CONFIG.background !== 'default') {
+  container.classList.add(`bg-${CONFIG.background}`);
+}
+if (CONFIG.direction === 'down') {
+  container.classList.add('direction-down');
+}
+
+let messageElements = [];
+let eventSource = null;
+
+function getColorClass(username) {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return 'color-' + Math.abs(hash % 12);
+}
+
+function addMessage(msg) {
+  const messagesContainer = document.getElementById('messages');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = getColorClass(msg.username);
+  if (msg.is_broadcaster) wrapper.classList.add('broadcaster');
+  else if (msg.is_mod) wrapper.classList.add('moderator');
+  if (msg.is_subscriber) wrapper.classList.add('subscriber');
+
+  const div = document.createElement('div');
+  div.className = 'chat-message';
+
+  // Build avatar HTML
+  let avatarHtml = '';
+  if (CONFIG.showAvatars) {
+    const avatarUrl = msg.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.username)}&background=random&color=fff&size=64&rounded=true`;
+    avatarHtml = `<img class="avatar" src="${avatarUrl}" alt="" onerror="this.classList.add('hidden')">`;
+  }
+
+  div.innerHTML = `
+    ${avatarHtml}
+    <div class="message-content">
+      <span class="username">${escapeHtml(msg.username)}:</span>
+      <span class="message-text">${escapeHtml(msg.message)}</span>
+    </div>
+  `;
+
+  wrapper.appendChild(div);
+
+  if (CONFIG.direction === 'down') {
+    messagesContainer.insertBefore(wrapper, messagesContainer.firstChild);
+  } else {
+    messagesContainer.appendChild(wrapper);
+  }
+  messageElements.push({ element: wrapper, timestamp: Date.now() });
+
+  // Remove oldest if too many
+  while (messageElements.length > CONFIG.maxMessages) {
+    const oldest = messageElements.shift();
+    oldest.element.querySelector('.chat-message').classList.add('fading');
+    setTimeout(() => oldest.element.remove(), 300);
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function connectSSE() {
+  if (eventSource) {
+    eventSource.close();
+  }
+
+  console.log('Connecting to SSE:', CONFIG.sseEndpoint);
+  eventSource = new EventSource(CONFIG.sseEndpoint);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'config') return;
+      addMessage(msg);
+    } catch (e) {
+      console.error('Failed to parse message:', e);
+    }
+  };
+
+  eventSource.onerror = (e) => {
+    console.log('SSE connection error, reconnecting in 3s...');
+    eventSource.close();
+    setTimeout(connectSSE, 3000);
+  };
+
+  eventSource.onopen = () => {
+    console.log('Connected to chat server');
+  };
+}
+
+function checkMessageAges() {
+  if (CONFIG.fadeSeconds <= 0) return;
+
+  const now = Date.now();
+  const fadeMs = CONFIG.fadeSeconds * 1000;
+
+  messageElements.forEach((item) => {
+    const msgBox = item.element.querySelector('.chat-message');
+    if (now - item.timestamp > fadeMs && !msgBox.classList.contains('fading')) {
+      msgBox.classList.add('fading');
+      setTimeout(() => {
+        item.element.remove();
+        const idx = messageElements.indexOf(item);
+        if (idx > -1) messageElements.splice(idx, 1);
+      }, 300);
+    }
+  });
+}
+
+connectSSE();
+setInterval(checkMessageAges, 5000);
+console.log('Minimal chat overlay config:', CONFIG);
+</script>
+</body>
+</html>
