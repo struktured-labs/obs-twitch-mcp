@@ -19,6 +19,7 @@ from . import autoclip
 from . import scheduler
 from . import engagement
 from . import chat_overlay
+from . import obs_process
 
 __all__ = [
     "obs",
@@ -38,4 +39,5 @@ __all__ = [
     "scheduler",
     "engagement",
     "chat_overlay",
+    "obs_process",
 ]
