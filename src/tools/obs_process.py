@@ -92,32 +92,67 @@ def _get_obs_pids() -> list[int]:
     try:
         if system == "Windows":
             # Use tasklist on Windows
-            result = subprocess.run(
-                ["tasklist", "/FI", "IMAGENAME eq obs64.exe", "/FO", "CSV", "/NH"],
-                capture_output=True,
-                text=True,
-            )
-            for line in result.stdout.strip().split("\n"):
-                if line and "obs" in line.lower():
-                    parts = line.strip('"').split('","')
-                    if len(parts) >= 2:
+            for exe_name in ["obs64.exe", "obs32.exe", "obs.exe"]:
+                result = subprocess.run(
+                    ["tasklist", "/FI", f"IMAGENAME eq {exe_name}", "/FO", "CSV", "/NH"],
+                    capture_output=True,
+                    text=True,
+                )
+                for line in result.stdout.strip().split("\n"):
+                    if line and exe_name.lower() in line.lower():
+                        parts = line.strip('"').split('","')
+                        if len(parts) >= 2:
+                            try:
+                                pids.append(int(parts[1]))
+                            except ValueError:
+                                pass
+        else:
+            # Linux/macOS: Use pgrep -x for exact process name match
+            # This avoids matching "obsws-python", "claude obs-studio", etc.
+            for name in ["obs", "obs-studio"]:
+                result = subprocess.run(
+                    ["pgrep", "-x", name],
+                    capture_output=True,
+                    text=True,
+                )
+                for line in result.stdout.strip().split("\n"):
+                    if line:
                         try:
-                            pids.append(int(parts[1]))
+                            pid = int(line)
+                            if pid not in pids:
+                                pids.append(pid)
                         except ValueError:
                             pass
-        else:
-            # Use pgrep on Linux/macOS
+
+            # Also check for flatpak OBS
             result = subprocess.run(
-                ["pgrep", "-f", "obs"],
+                ["pgrep", "-f", "^/app/bin/obs$"],
                 capture_output=True,
                 text=True,
             )
             for line in result.stdout.strip().split("\n"):
                 if line:
                     try:
-                        pids.append(int(line))
+                        pid = int(line)
+                        if pid not in pids:
+                            pids.append(pid)
                     except ValueError:
                         pass
+
+            # Verify each PID is actually OBS by checking /proc/{pid}/exe on Linux
+            if system == "Linux" and pids:
+                verified_pids = []
+                for pid in pids:
+                    try:
+                        exe_path = os.readlink(f"/proc/{pid}/exe")
+                        # Check if it's actually OBS binary
+                        if "obs" in os.path.basename(exe_path).lower():
+                            verified_pids.append(pid)
+                    except (OSError, FileNotFoundError):
+                        # Process may have exited or we don't have permission
+                        pass
+                pids = verified_pids
+
     except Exception as e:
         logger.warning(f"Could not get OBS PIDs: {e}")
 
