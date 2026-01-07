@@ -2,6 +2,7 @@
 Shared application state and client factories.
 """
 
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,8 @@ from .utils.obs_client import OBSClient
 from .utils.twitch_client import TwitchClient
 from .utils.chat_listener import ChatListener
 from .utils.twitch_auth import get_valid_token
+from .utils.chat_filter import get_chat_filter
+from .utils.sse_server import start_sse_server, broadcast_message_sync, get_sse_server
 
 logger = get_logger("app")
 
@@ -125,6 +128,29 @@ def get_chat_listener() -> ChatListener | None:
     return _chat_listener
 
 
+def _create_sse_handler():
+    """Create a handler that forwards filtered messages to SSE clients."""
+    chat_filter = get_chat_filter()
+
+    def handler(msg):
+        """Forward chat message to SSE server if it passes filters."""
+        # Convert ChatMessage to dict
+        msg_dict = {
+            "username": msg.username,
+            "message": msg.message,
+            "is_mod": msg.is_mod,
+            "is_subscriber": msg.is_subscriber,
+            "is_broadcaster": msg.username.lower() == os.getenv("TWITCH_CHANNEL", "").lower(),
+        }
+
+        # Apply filters
+        filtered = chat_filter.process(msg_dict)
+        if filtered:
+            broadcast_message_sync(filtered)
+
+    return handler
+
+
 def start_chat_listener() -> ChatListener:
     """Start the background chat listener."""
     global _chat_listener
@@ -142,6 +168,10 @@ def start_chat_listener() -> ChatListener:
         channel=channel,
         oauth_token=token,
     )
+
+    # Add SSE broadcast handler
+    _chat_listener.add_handler(_create_sse_handler())
+
     _chat_listener.start()
     return _chat_listener
 
@@ -154,16 +184,32 @@ def stop_chat_listener() -> None:
         _chat_listener = None
 
 
-# Auto-start chat listener when module loads
-def _auto_start_listener():
-    """Try to auto-start the chat listener."""
+# Auto-start chat listener and SSE server when module loads
+def _auto_start_services():
+    """Try to auto-start the chat listener and SSE server."""
     # Validate env vars first
     missing = _validate_env()
     if missing:
         logger.warning(f"Missing env vars (run 'source setenv.sh'): {', '.join(missing)}")
-        logger.warning("Chat listener not started due to missing configuration")
+        logger.warning("Services not started due to missing configuration")
         return
 
+    # Start SSE server for chat overlay
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(start_sse_server())
+        # Keep the loop running in a thread for SSE
+        import threading
+        def run_loop():
+            loop.run_forever()
+        sse_thread = threading.Thread(target=run_loop, daemon=True)
+        sse_thread.start()
+        logger.info("SSE server auto-started successfully")
+    except Exception as e:
+        logger.warning(f"Could not auto-start SSE server: {e}")
+
+    # Start chat listener
     try:
         start_chat_listener()
         logger.info("Chat listener auto-started successfully")
@@ -173,4 +219,4 @@ def _auto_start_listener():
 
 # Delay auto-start slightly to let env vars load
 import threading
-threading.Timer(2.0, _auto_start_listener).start()
+threading.Timer(2.0, _auto_start_services).start()

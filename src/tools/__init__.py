@@ -18,6 +18,7 @@ from . import health
 from . import autoclip
 from . import scheduler
 from . import engagement
+from . import chat_overlay
 
 __all__ = [
     "obs",
@@ -36,4 +37,5 @@ __all__ = [
     "autoclip",
     "scheduler",
     "engagement",
+    "chat_overlay",
 ]

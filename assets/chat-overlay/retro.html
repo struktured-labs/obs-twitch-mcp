@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap');
+
+  :root {
+    --bg-color: transparent;
+    --msg-bg: rgba(0, 0, 0, 0.7);
+    --text-color: #ffffff;
+    --font-family: 'VT323', 'Courier New', monospace;
+    --font-size: 42px;
+    --username-size: 36px;
+    --border-width: 5px;
+    --avatar-size: 48px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-color);
+    font-family: var(--font-family);
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .chat-container {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: calc(100vh - 40px);
+    overflow: hidden;
+  }
+
+  .chat-container.direction-down {
+    flex-direction: column-reverse;
+    justify-content: flex-start;
+  }
+
+  .chat-messages {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .chat-container.direction-down .chat-messages {
+    flex-direction: column-reverse;
+  }
+
+  .chat-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 4px;
+    background: var(--msg-bg);
+    border-left: var(--border-width) solid;
+    animation: slideIn 0.3s ease-out, glow 2s ease-in-out infinite;
+    text-shadow: 0 0 10px currentColor;
+    font-size: var(--font-size);
+    line-height: 1.4;
+    word-wrap: break-word;
+    letter-spacing: 1px;
+  }
+
+  .chat-message.no-bg {
+    background: transparent;
+  }
+
+  .avatar {
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid currentColor;
+    box-shadow: 0 0 10px currentColor;
+  }
+
+  .avatar.hidden {
+    display: none;
+  }
+
+  .message-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(-50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes glow {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.2); }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; transform: translateY(-20px); }
+  }
+
+  .chat-message.fading {
+    animation: fadeOut 0.5s ease-out forwards;
+  }
+
+  .username {
+    font-weight: bold;
+    margin-right: 10px;
+    text-transform: uppercase;
+    font-size: var(--username-size);
+  }
+
+  .message-text {
+    color: var(--text-color);
+    font-size: var(--font-size);
+    text-shadow: 0 0 8px rgba(255,255,255,0.6);
+  }
+
+  /* Neon color palette for usernames */
+  .color-0 { color: #ff6b6b; border-color: #ff6b6b; }
+  .color-1 { color: #4ecdc4; border-color: #4ecdc4; }
+  .color-2 { color: #ffe66d; border-color: #ffe66d; }
+  .color-3 { color: #ff9ff3; border-color: #ff9ff3; }
+  .color-4 { color: #54a0ff; border-color: #54a0ff; }
+  .color-5 { color: #5f27cd; border-color: #5f27cd; }
+  .color-6 { color: #00d2d3; border-color: #00d2d3; }
+  .color-7 { color: #ff9f43; border-color: #ff9f43; }
+  .color-8 { color: #ee5a24; border-color: #ee5a24; }
+  .color-9 { color: #a29bfe; border-color: #a29bfe; }
+  .color-10 { color: #fd79a8; border-color: #fd79a8; }
+  .color-11 { color: #00b894; border-color: #00b894; }
+
+  /* Special colors for broadcaster/mods */
+  .broadcaster {
+    color: #ff0000 !important;
+    border-color: #ff0000 !important;
+    text-shadow: 0 0 15px #ff0000, 0 0 30px #ff0000;
+  }
+  .moderator {
+    color: #00ff00 !important;
+    border-color: #00ff00 !important;
+    text-shadow: 0 0 15px #00ff00;
+  }
+  .subscriber {
+    text-shadow: 0 0 15px currentColor, 0 0 25px currentColor;
+  }
+
+  /* Scanline effect for extra retro feel */
+  .chat-container.scanlines::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* Font size variants */
+  .size-small { --font-size: 32px; --username-size: 28px; --avatar-size: 36px; }
+  .size-medium { --font-size: 42px; --username-size: 36px; --avatar-size: 48px; }
+  .size-large { --font-size: 56px; --username-size: 48px; --avatar-size: 64px; }
+
+  /* Background variants */
+  .bg-dark { --msg-bg: rgba(0, 0, 0, 0.85); }
+  .bg-transparent { --msg-bg: transparent; }
+  .bg-subtle { --msg-bg: rgba(0, 0, 0, 0.4); }
+</style>
+</head>
+<body>
+
+<div class="chat-container scanlines" id="container">
+  <div class="chat-messages" id="messages">
+    <!-- Messages will be inserted here -->
+  </div>
+</div>
+
+<script>
+// Parse URL parameters
+const params = new URLSearchParams(window.location.search);
+const CONFIG = {
+  maxMessages: parseInt(params.get('maxmsgs') || '15'),
+  fadeSeconds: parseInt(params.get('fade') || '60'),
+  showAvatars: params.get('avatars') !== 'false',
+  direction: params.get('dir') || 'up',
+  size: params.get('size') || 'medium',
+  background: params.get('bg') || 'default',
+  scanlines: params.get('scanlines') !== 'false',
+  sseEndpoint: params.get('sse') || 'http://localhost:8765/events',
+  font: params.get('font') || 'VT323',
+};
+
+// Apply configuration
+const container = document.getElementById('container');
+container.classList.add(`size-${CONFIG.size}`);
+if (CONFIG.background !== 'default') {
+  container.classList.add(`bg-${CONFIG.background}`);
+}
+if (CONFIG.direction === 'down') {
+  container.classList.add('direction-down');
+}
+if (!CONFIG.scanlines) {
+  container.classList.remove('scanlines');
+}
+if (CONFIG.font && CONFIG.font !== 'VT323') {
+  document.body.style.fontFamily = `'${CONFIG.font}', monospace`;
+}
+
+let messageElements = [];
+let eventSource = null;
+
+function getColorClass(username) {
+  // Hash username to get consistent color
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return 'color-' + Math.abs(hash % 12);
+}
+
+function addMessage(msg) {
+  const messagesContainer = document.getElementById('messages');
+
+  const div = document.createElement('div');
+  div.className = `chat-message ${getColorClass(msg.username)}`;
+
+  // Add special classes
+  if (msg.is_broadcaster) div.classList.add('broadcaster');
+  else if (msg.is_mod) div.classList.add('moderator');
+  if (msg.is_subscriber) div.classList.add('subscriber');
+
+  // Build avatar HTML
+  let avatarHtml = '';
+  if (CONFIG.showAvatars) {
+    const avatarUrl = msg.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.username)}&background=random&color=fff&size=64`;
+    avatarHtml = `<img class="avatar" src="${avatarUrl}" alt="" onerror="this.classList.add('hidden')">`;
+  }
+
+  div.innerHTML = `
+    ${avatarHtml}
+    <div class="message-content">
+      <span class="username">${escapeHtml(msg.username)}:</span>
+      <span class="message-text">${escapeHtml(msg.message)}</span>
+    </div>
+  `;
+
+  if (CONFIG.direction === 'down') {
+    messagesContainer.insertBefore(div, messagesContainer.firstChild);
+  } else {
+    messagesContainer.appendChild(div);
+  }
+  messageElements.push({ element: div, timestamp: Date.now() });
+
+  // Remove oldest if too many
+  while (messageElements.length > CONFIG.maxMessages) {
+    const oldest = messageElements.shift();
+    oldest.element.classList.add('fading');
+    setTimeout(() => oldest.element.remove(), 500);
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function connectSSE() {
+  if (eventSource) {
+    eventSource.close();
+  }
+
+  console.log('Connecting to SSE:', CONFIG.sseEndpoint);
+  eventSource = new EventSource(CONFIG.sseEndpoint);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      // Skip config updates
+      if (msg.type === 'config') {
+        console.log('Config update:', msg);
+        return;
+      }
+      addMessage(msg);
+    } catch (e) {
+      console.error('Failed to parse message:', e);
+    }
+  };
+
+  eventSource.addEventListener('config', (event) => {
+    try {
+      const config = JSON.parse(event.data);
+      console.log('Received config:', config);
+      // Could dynamically update CONFIG here
+    } catch (e) {
+      console.error('Failed to parse config:', e);
+    }
+  });
+
+  eventSource.onerror = (e) => {
+    console.log('SSE connection error, reconnecting in 3s...');
+    eventSource.close();
+    setTimeout(connectSSE, 3000);
+  };
+
+  eventSource.onopen = () => {
+    console.log('Connected to chat server');
+  };
+}
+
+// Check for old messages and fade them
+function checkMessageAges() {
+  if (CONFIG.fadeSeconds <= 0) return; // No fading
+
+  const now = Date.now();
+  const fadeMs = CONFIG.fadeSeconds * 1000;
+
+  messageElements.forEach((item, index) => {
+    if (now - item.timestamp > fadeMs && !item.element.classList.contains('fading')) {
+      item.element.classList.add('fading');
+      setTimeout(() => {
+        item.element.remove();
+        const idx = messageElements.indexOf(item);
+        if (idx > -1) messageElements.splice(idx, 1);
+      }, 500);
+    }
+  });
+}
+
+// Start SSE connection
+connectSSE();
+setInterval(checkMessageAges, 5000);
+
+// Log config for debugging
+console.log('Chat overlay config:', CONFIG);
+</script>
+</body>
+</html>
