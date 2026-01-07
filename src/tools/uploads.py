@@ -5,14 +5,13 @@ Provides tools for uploading videos to various platforms.
 Currently supports:
 - YouTube (via Data API v3)
 
-Limited support:
-- Twitch (no API upload - manual only)
-
 Future platforms:
 - Rumble
 - PeerTube
 - Instagram
 - TikTok
+
+Note: Twitch API does not support video uploads - use their web Video Producer.
 """
 
 from ..app import mcp, get_twitch_client
@@ -20,40 +19,8 @@ from ..utils.youtube_client import get_youtube_client
 
 
 # =============================================================================
-# Twitch Video Upload Tools
+# Twitch Video Tools (read-only - no upload API)
 # =============================================================================
-
-
-@mcp.tool()
-def upload_video_to_twitch(
-    file_path: str,
-    title: str,
-    description: str = "",
-) -> dict:
-    """
-    Upload a video file to Twitch.
-
-    NOTE: Twitch Helix API does not support video uploads. The old v5 API
-    had this feature but it was deprecated. Videos must be uploaded manually
-    via the Twitch Video Producer web interface.
-
-    For creating clips from live streams, use twitch_create_clip instead.
-
-    Args:
-        file_path: Path to the video file to upload
-        title: Title for the video on Twitch
-        description: Optional description for the video
-
-    Returns:
-        Error explaining the limitation.
-    """
-    return {
-        "status": "error",
-        "platform": "twitch",
-        "message": "Twitch API does not support video uploads. Use the Video Producer at https://dashboard.twitch.tv/content/video-producer to upload manually, or use twitch_create_clip to clip from live streams.",
-        "file_path": file_path,
-        "suggested_title": title,
-    }
 
 
 @mcp.tool()
@@ -233,12 +200,13 @@ def upload_video(
     This is a generic upload tool that routes to the appropriate platform.
     Currently supports: youtube
 
-    Limited: twitch (no API upload)
     Future platforms: rumble, peertube, instagram, tiktok
+
+    Note: Twitch API does not support video uploads - use their web Video Producer.
 
     Args:
         file_path: Path to the video file to upload
-        platform: Target platform (twitch, youtube, etc.)
+        platform: Target platform (youtube, rumble, etc.)
         title: Title for the video
         description: Optional description
 
@@ -248,7 +216,11 @@ def upload_video(
     platform = platform.lower().strip()
 
     if platform == "twitch":
-        return upload_video_to_twitch(file_path, title, description)
+        return {
+            "status": "error",
+            "platform": "twitch",
+            "message": "Twitch API does not support video uploads. Use https://dashboard.twitch.tv/content/video-producer",
+        }
     elif platform in ("youtube", "yt"):
         return upload_video_to_youtube(file_path, title, description)
     elif platform == "rumble":
