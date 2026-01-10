@@ -214,16 +214,13 @@ def start_obs(
     if env_vars:
         env.update(env_vars)
 
-    # Add common Linux library paths if not set
+    # Check for OBS_LAUNCH_LD_LIBRARY_PATH from MCP config (preferred)
     if platform.system() == "Linux" and "LD_LIBRARY_PATH" not in (env_vars or {}):
-        # Check for Python lib path (like in user's run.sh)
-        python_lib = Path.home() / ".local/share/uv/python"
-        if python_lib.exists():
-            # Find the most recent Python install
-            python_dirs = sorted(python_lib.glob("cpython-*/lib"), reverse=True)
-            if python_dirs:
-                current = env.get("LD_LIBRARY_PATH", "")
-                env["LD_LIBRARY_PATH"] = f"{python_dirs[0]}:{current}" if current else str(python_dirs[0])
+        obs_ld_path = os.environ.get("OBS_LAUNCH_LD_LIBRARY_PATH")
+        if obs_ld_path:
+            current = env.get("LD_LIBRARY_PATH", "")
+            env["LD_LIBRARY_PATH"] = f"{obs_ld_path}:{current}" if current else obs_ld_path
+            logger.info(f"Using OBS_LAUNCH_LD_LIBRARY_PATH: {obs_ld_path}")
 
     logger.info(f"Starting OBS with command: {' '.join(cmd)}")
 
@@ -264,13 +261,27 @@ def start_obs(
         }
 
 
+def _wait_for_pid_exit(pid: int, timeout: float = 10.0) -> bool:
+    """Wait for a process to exit, return True if exited within timeout."""
+    import time
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            os.kill(pid, 0)  # Check if process exists
+            time.sleep(0.2)
+        except ProcessLookupError:
+            return True  # Process exited
+    return False  # Timeout
+
+
 @mcp.tool()
-def stop_obs(force: bool = False) -> dict:
+def stop_obs(force: bool = False, graceful_timeout: float = 20.0) -> dict:
     """
     Stop OBS Studio.
 
     Args:
         force: If True, forcefully kill OBS (SIGKILL). Otherwise, graceful shutdown (SIGTERM).
+        graceful_timeout: Seconds to wait for graceful shutdown before forcing (default: 20).
 
     Returns:
         Dict with status.
@@ -283,9 +294,13 @@ def stop_obs(force: bool = False) -> dict:
             "message": "OBS is not running",
         }
 
+    # Note: OBS websocket protocol has no exit/quit request, so we use SIGTERM
+    # This may trigger "closed unexpectedly" warning on next startup (cosmetic only)
+
     system = platform.system()
     stopped = []
     failed = []
+    force_killed = []
 
     for pid in pids:
         try:
@@ -295,11 +310,29 @@ def stop_obs(force: bool = False) -> dict:
                     ["taskkill", "/F" if force else "", "/PID", str(pid)],
                     capture_output=True,
                 )
+                stopped.append(pid)
             else:
-                # Use signals on Linux/macOS
-                sig = signal.SIGKILL if force else signal.SIGTERM
-                os.kill(pid, sig)
-            stopped.append(pid)
+                if force:
+                    # Immediate SIGKILL
+                    os.kill(pid, signal.SIGKILL)
+                    stopped.append(pid)
+                    force_killed.append(pid)
+                else:
+                    # Graceful: SIGTERM, wait, then SIGKILL if needed
+                    os.kill(pid, signal.SIGTERM)
+                    logger.info(f"Sent SIGTERM to OBS process {pid}, waiting for graceful exit...")
+
+                    if _wait_for_pid_exit(pid, graceful_timeout):
+                        stopped.append(pid)
+                        logger.info(f"OBS process {pid} exited gracefully")
+                    else:
+                        # Process didn't exit, force kill
+                        logger.warning(f"OBS process {pid} didn't exit gracefully, sending SIGKILL")
+                        os.kill(pid, signal.SIGKILL)
+                        _wait_for_pid_exit(pid, 2.0)  # Brief wait after SIGKILL
+                        stopped.append(pid)
+                        force_killed.append(pid)
+
             logger.info(f"Stopped OBS process {pid}")
         except ProcessLookupError:
             # Already dead
@@ -321,7 +354,8 @@ def stop_obs(force: bool = False) -> dict:
         "status": "stopped",
         "pids": stopped,
         "force": force,
-        "message": f"Stopped {len(stopped)} OBS process(es)",
+        "force_killed": force_killed,
+        "message": f"Stopped {len(stopped)} OBS process(es)" + (f" ({len(force_killed)} force killed)" if force_killed else " (graceful)"),
     }
 
 
@@ -362,7 +396,7 @@ def restart_obs(
     Returns:
         Dict with status.
     """
-    # Stop OBS
+    # Stop OBS (now waits for graceful exit)
     stop_result = stop_obs(force=force)
 
     if stop_result["status"] not in ["stopped", "not_running", "partial"]:
@@ -371,10 +405,6 @@ def restart_obs(
             "message": "Failed to stop OBS",
             "stop_result": stop_result,
         }
-
-    # Wait a moment for cleanup
-    import time
-    time.sleep(1)
 
     # Start OBS
     start_result = start_obs(custom_command=custom_command, env_vars=env_vars)

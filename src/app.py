@@ -186,37 +186,44 @@ def stop_chat_listener() -> None:
 
 # Auto-start chat listener and SSE server when module loads
 def _auto_start_services():
-    """Try to auto-start the chat listener and SSE server."""
-    # Validate env vars first
-    missing = _validate_env()
-    if missing:
-        logger.warning(f"Missing env vars (run 'source setenv.sh'): {', '.join(missing)}")
-        logger.warning("Services not started due to missing configuration")
-        return
+    """Try to auto-start the chat listener and SSE server in background thread."""
+    def _startup_worker():
+        """Worker thread that handles potentially slow startup operations."""
+        # Validate env vars first
+        missing = _validate_env()
+        if missing:
+            logger.warning(f"Missing env vars (run 'source setenv.sh'): {', '.join(missing)}")
+            logger.warning("Services not started due to missing configuration")
+            return
 
-    # Start SSE server for chat overlay
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(start_sse_server())
-        # Keep the loop running in a thread for SSE
-        import threading
-        def run_loop():
-            loop.run_forever()
-        sse_thread = threading.Thread(target=run_loop, daemon=True)
-        sse_thread.start()
-        logger.info("SSE server auto-started successfully")
-    except Exception as e:
-        logger.warning(f"Could not auto-start SSE server: {e}")
+        # Start SSE server for chat overlay
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(start_sse_server())
+            # Keep the loop running in a thread for SSE
+            def run_loop():
+                loop.run_forever()
+            sse_thread = threading.Thread(target=run_loop, daemon=True)
+            sse_thread.start()
+            logger.info("SSE server auto-started successfully")
+        except Exception as e:
+            logger.warning(f"Could not auto-start SSE server: {e}")
 
-    # Start chat listener
-    try:
-        start_chat_listener()
-        logger.info("Chat listener auto-started successfully")
-    except Exception as e:
-        logger.error(f"Could not auto-start chat listener: {e}")
+        # Start chat listener (may block on IRC connection with 8s timeout)
+        try:
+            start_chat_listener()
+            logger.info("Chat listener auto-started successfully")
+        except Exception as e:
+            logger.error(f"Could not auto-start chat listener: {e}")
+
+    # Run all startup in a background daemon thread
+    # This ensures MCP tools are never blocked by startup
+    import threading
+    startup_thread = threading.Thread(target=_startup_worker, daemon=True, name="mcp-auto-start")
+    startup_thread.start()
+    logger.debug("Auto-start services initiated in background thread")
 
 
-# Delay auto-start slightly to let env vars load
-import threading
-threading.Timer(2.0, _auto_start_services).start()
+# Start auto-start immediately (no delay needed since it's non-blocking now)
+_auto_start_services()

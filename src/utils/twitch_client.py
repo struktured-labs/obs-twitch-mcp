@@ -66,6 +66,8 @@ class TwitchClient:
         """Make an API call with auto-retry on 401 and exponential backoff."""
         # Extract extra headers once (don't pop on each iteration)
         extra_headers = kwargs.pop("headers", {})
+        # Don't allow timeout to be overridden via kwargs
+        kwargs.pop("timeout", None)
         backoff = 1  # Start with 1 second backoff
 
         for attempt in range(3):
@@ -75,7 +77,7 @@ class TwitchClient:
                 **extra_headers,
             }
 
-            resp = getattr(httpx, method)(url, headers=headers, **kwargs)
+            resp = getattr(httpx, method)(url, headers=headers, timeout=10.0, **kwargs)
 
             if resp.status_code == 401:
                 logger.warning(f"API call to {url} failed with 401 (attempt {attempt + 1}/3)")
@@ -110,6 +112,7 @@ class TwitchClient:
             token = f"oauth:{token}"
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(8.0)  # Set timeout BEFORE SSL wrap and connect
         ctx = ssl.create_default_context()
         ssock = ctx.wrap_socket(sock, server_hostname="irc.chat.twitch.tv")
         ssock.connect(("irc.chat.twitch.tv", 6697))
