@@ -26,6 +26,7 @@ def get_device_code(client_id: str, scopes: list[str]) -> dict:
             "client_id": client_id,
             "scopes": " ".join(scopes),
         },
+        timeout=10.0,
     )
     resp.raise_for_status()
     return resp.json()
@@ -44,6 +45,7 @@ def poll_for_token(client_id: str, scopes: list[str], device_code: str, interval
                 "device_code": device_code,
                 "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
             },
+            timeout=10.0,
         )
 
         data = resp.json()
@@ -91,6 +93,7 @@ def refresh_token(client_id: str, client_secret: str, refresh_token: str) -> dic
             "refresh_token": refresh_token,
             "grant_type": "refresh_token",
         },
+        timeout=10.0,
     )
     resp.raise_for_status()
     return resp.json()
@@ -101,6 +104,7 @@ def validate_token(access_token: str) -> dict | None:
     resp = httpx.get(
         "https://id.twitch.tv/oauth2/validate",
         headers={"Authorization": f"OAuth {access_token}"},
+        timeout=10.0,
     )
     if resp.status_code == 200:
         return resp.json()

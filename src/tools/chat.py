@@ -4,25 +4,39 @@ Twitch chat interaction tools.
 
 from datetime import datetime
 
-from ..app import mcp, get_twitch_client, refresh_twitch_client
+from ..app import mcp, get_twitch_client, refresh_twitch_client, get_chat_listener
 from ..utils import chat_logger
 
 
 @mcp.tool()
 def twitch_send_message(message: str) -> str:
     """Send a message to Twitch chat."""
-    client = get_twitch_client()
-    client.send_chat_message(message)
-    return f"Sent to chat: {message}"
+    # Use the persistent chat listener connection (non-blocking)
+    listener = get_chat_listener()
+    if listener and listener.is_running:
+        listener.send_message(message)
+        return f"Sent to chat: {message}"
+    else:
+        # Fallback to client method (blocks for 8s, but only if listener not running)
+        client = get_twitch_client()
+        client.send_chat_message(message)
+        return f"Sent to chat (fallback): {message}"
 
 
 @mcp.tool()
 def twitch_reply_to_user(username: str, message: str) -> str:
     """Reply to a specific user in chat (mentions them)."""
-    client = get_twitch_client()
     full_message = f"@{username} {message}"
-    client.send_chat_message(full_message)
-    return f"Replied to @{username}: {message}"
+    # Use the persistent chat listener connection (non-blocking)
+    listener = get_chat_listener()
+    if listener and listener.is_running:
+        listener.send_message(full_message)
+        return f"Replied to @{username}: {message}"
+    else:
+        # Fallback to client method (blocks for 8s, but only if listener not running)
+        client = get_twitch_client()
+        client.send_chat_message(full_message)
+        return f"Replied to @{username}: {message} (fallback)"
 
 
 @mcp.tool()

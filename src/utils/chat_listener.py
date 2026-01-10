@@ -67,6 +67,7 @@ class ChatListener:
 
         logger.debug(f"Connecting to Twitch IRC for #{self.channel}")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(8.0)  # Set timeout BEFORE SSL wrap and connect
         ctx = ssl.create_default_context()
         self._socket = ctx.wrap_socket(sock, server_hostname="irc.chat.twitch.tv")
         self._socket.connect(("irc.chat.twitch.tv", 6697))
@@ -117,6 +118,15 @@ class ChatListener:
 
     def _listen_loop(self) -> None:
         """Main listening loop."""
+        # Connect in the background thread (non-blocking for caller)
+        try:
+            self._connect()
+            logger.info(f"Chat listener connected for #{self.channel}")
+        except Exception as e:
+            logger.error(f"Chat listener failed to connect: {e}")
+            self._running = False
+            return
+
         buffer = ""
 
         while self._running:
@@ -175,10 +185,10 @@ class ChatListener:
             return
 
         self._running = True
-        self._connect()
+        # Connection happens in background thread (non-blocking)
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
-        logger.info(f"Chat listener started for #{self.channel}")
+        logger.info(f"Chat listener starting for #{self.channel} (connecting in background)")
 
     def stop(self) -> None:
         """Stop the listener."""
@@ -195,3 +205,14 @@ class ChatListener:
     @property
     def is_running(self) -> bool:
         return self._running
+
+    def send_message(self, message: str) -> None:
+        """Send a message through the persistent IRC connection (non-blocking)."""
+        if not self._running or not self._socket:
+            raise RuntimeError("Chat listener not connected - cannot send message")
+
+        try:
+            self._socket.send(f"PRIVMSG #{self.channel} :{message}\r\n".encode())
+        except Exception as e:
+            logger.error(f"Failed to send message: {e}")
+            raise
