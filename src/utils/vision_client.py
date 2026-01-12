@@ -246,6 +246,97 @@ class VisionClient:
             logger.error(f"Translation failed: {e}", exc_info=True)
             return {"japanese_text": "", "english_text": ""}
 
+    async def translate_text(
+        self,
+        japanese_text: str,
+        model: str = "claude-3-haiku-20240307",
+    ) -> dict:
+        """
+        Translate Japanese text to English (text-only, no image).
+
+        This is much faster and cheaper than translate_image since it only
+        processes text. Use with manga-ocr for optimal cost/performance.
+
+        Args:
+            japanese_text: Japanese text to translate
+            model: Claude model to use (default: haiku for speed/cost)
+
+        Returns:
+            Dict with keys:
+            - japanese_text: Original Japanese text
+            - english_text: English translation
+        """
+        if not japanese_text or not japanese_text.strip():
+            return {"japanese_text": "", "english_text": ""}
+
+        prompt = f"""Translate this Japanese game dialogue to natural English.
+
+Japanese text:
+{japanese_text}
+
+Return ONLY a JSON object with this exact format:
+{{"japanese_text": "original Japanese text", "english_text": "English translation"}}
+
+Translation guidelines:
+- Make it sound natural and conversational
+- Preserve character names and tone
+- Keep it concise for on-screen display
+- Return ONLY the JSON object, no additional text
+"""
+
+        # Define the API call function to be retried
+        async def _api_call():
+            # Make text-only API call (with timeout from client initialization)
+            message = await self.client.messages.create(
+                model=model,
+                max_tokens=512,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+            )
+
+            # Extract response text
+            response_text = message.content[0].text
+
+            # Parse JSON response
+            response_text = response_text.strip()
+            if response_text.startswith("```json"):
+                response_text = response_text[7:]
+            if response_text.startswith("```"):
+                response_text = response_text[3:]
+            if response_text.endswith("```"):
+                response_text = response_text[:-3]
+            response_text = response_text.strip()
+
+            # Parse as JSON
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse text translation response as JSON: {e}")
+                logger.error(f"Response text: {response_text}")
+                return {"japanese_text": japanese_text, "english_text": ""}
+
+            # Validate response structure
+            if "english_text" not in result:
+                logger.warning(f"Invalid response structure: {result}")
+                return {"japanese_text": japanese_text, "english_text": ""}
+
+            # Ensure japanese_text is present
+            if "japanese_text" not in result:
+                result["japanese_text"] = japanese_text
+
+            return result
+
+        # Execute with retry logic
+        try:
+            return await self._retry_api_call("Text translation", _api_call)
+        except Exception as e:
+            logger.error(f"Text translation failed: {e}", exc_info=True)
+            return {"japanese_text": japanese_text, "english_text": ""}
+
     async def detect_dialogue_box(
         self,
         image_bytes: bytes,
