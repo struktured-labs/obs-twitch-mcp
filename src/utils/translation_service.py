@@ -259,9 +259,9 @@ class TranslationService:
 
         logger.debug(f"Change detection: has_changed={has_changed}")
 
-        # Force re-check if dialogue hasn't changed in 5 seconds (to detect removal)
+        # Force re-check if dialogue hasn't changed in 2 seconds (to detect removal quickly)
         time_since_change = time.time() - self.last_change_time if self.last_change_time > 0 else 0
-        force_recheck = time_since_change > 5.0 and self.last_translation is not None
+        force_recheck = time_since_change > 2.0 and self.last_translation is not None
 
         if not has_changed and not force_recheck:
             self.api_calls_saved += 1
@@ -303,20 +303,22 @@ class TranslationService:
                 self.last_change_time = time.time()  # Reset change timer
                 return
 
-            # 6. Check if this is the same text (stale detection)
+            # 6. Check if this is the same text (stale detection - safety fallback only)
             current_text = translation["english_text"]
             if current_text == self.last_translation_text:
-                # Same text - check if it's been too long (30 seconds)
+                # Same text - check if it's been way too long (60 seconds - safety only)
                 time_with_same_text = time.time() - self.last_change_time
-                if time_with_same_text > 30.0:
-                    logger.info(f"Translation stale for {time_with_same_text:.1f}s, clearing")
-                    print(f"[TRANSLATION SERVICE] Stale translation detected ({time_with_same_text:.1f}s), clearing", flush=True)
+                if time_with_same_text > 60.0:
+                    logger.info(f"Translation stale for {time_with_same_text:.1f}s, clearing (safety)")
+                    print(f"[TRANSLATION SERVICE] Stale translation safety clear ({time_with_same_text:.1f}s)", flush=True)
                     if clear_overlay_fn:
                         await clear_overlay_fn()
                     self.last_translation = None
                     self.last_translation_text = ""
                     self.last_change_time = time.time()
                     return
+                # Same text but not stale yet - skip update
+                return
             else:
                 # New text - update overlay
                 logger.info(f"Calling overlay with: {translation['english_text']}")
