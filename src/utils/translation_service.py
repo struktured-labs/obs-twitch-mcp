@@ -35,6 +35,7 @@ from .image_utils import (
     save_debug_image,
 )
 from .vision_client import get_vision_client
+from .ocr_client import OCRClient
 
 logger = logging.getLogger(__name__)
 
@@ -554,7 +555,11 @@ class TranslationService:
 
     async def _translate_region(self, cropped_bytes: bytes, translate_fn) -> dict:
         """
-        Translate cropped dialogue region using Claude Vision.
+        Translate cropped dialogue region using manga-ocr + Claude text translation.
+
+        This is a 2-step pipeline:
+        1. manga-ocr: Extract Japanese text (local, fast, accurate for game text)
+        2. Claude: Translate text to English (cheaper than vision API)
 
         Args:
             cropped_bytes: Cropped image as bytes
@@ -567,26 +572,51 @@ class TranslationService:
             f.write(f"_translate_region called with {len(cropped_bytes)} bytes\n")
 
         try:
-            # Use Vision API client for translation
+            # Step 1: OCR - Extract Japanese text from image (local, no API cost)
             with open("/tmp/translation_service_debug.log", "a") as f:
-                f.write(f"Getting vision client...\n")
+                f.write(f"Running manga-ocr...\n")
+
+            ocr_client = OCRClient()
+            ocr_start = time.time()
+            japanese_text = ocr_client.extract_text_from_bytes(cropped_bytes)
+            ocr_time_ms = (time.time() - ocr_start) * 1000
+
+            with open("/tmp/translation_service_debug.log", "a") as f:
+                f.write(f"OCR extracted ({ocr_time_ms:.0f}ms): {japanese_text}\n")
+
+            logger.info(f"OCR extracted ({ocr_time_ms:.0f}ms): {japanese_text}")
+
+            # If no text found, return empty result
+            if not japanese_text or not japanese_text.strip():
+                with open("/tmp/translation_service_debug.log", "a") as f:
+                    f.write(f"No text extracted by OCR\n")
+                return {"japanese_text": "", "english_text": ""}
+
+            # Step 2: Translation - Send text to Claude (much cheaper than vision)
+            with open("/tmp/translation_service_debug.log", "a") as f:
+                f.write(f"Calling text translation API...\n")
 
             vision_client = get_vision_client()
+            translate_start = time.time()
+            result = await vision_client.translate_text(japanese_text)
+            translate_time_ms = (time.time() - translate_start) * 1000
 
             with open("/tmp/translation_service_debug.log", "a") as f:
-                f.write(f"Calling translate_image...\n")
+                f.write(
+                    f"Translation returned ({translate_time_ms:.0f}ms): {result}\n"
+                )
 
-            result = await vision_client.translate_image(cropped_bytes)
-
-            with open("/tmp/translation_service_debug.log", "a") as f:
-                f.write(f"Translation returned: {result}\n")
+            logger.info(
+                f"Translation completed ({translate_time_ms:.0f}ms): "
+                f"{result.get('english_text', '')}"
+            )
 
             return result
 
         except Exception as e:
             with open("/tmp/translation_service_debug.log", "a") as f:
                 f.write(f"Translation EXCEPTION: {type(e).__name__}: {e}\n")
-            logger.error(f"Translation API call failed: {e}", exc_info=True)
+            logger.error(f"Translation pipeline failed: {e}", exc_info=True)
             raise
 
     def get_status(self) -> dict:
