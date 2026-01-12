@@ -6,6 +6,7 @@ for accurate local OCR without API costs.
 """
 
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -43,6 +44,53 @@ def get_ocr_client():
     return _ocr_instance
 
 
+def _is_valid_japanese_text(text: str) -> bool:
+    """
+    Validate if OCR result is likely real Japanese text (not hallucination).
+
+    manga-ocr has no confidence scores and will hallucinate text from noise.
+    This filters out obvious garbage.
+
+    Args:
+        text: OCR result to validate
+
+    Returns:
+        True if text appears to be valid Japanese, False if likely hallucination
+    """
+    if not text or not text.strip():
+        return False
+
+    text = text.strip()
+
+    # Minimum length (too short is likely noise)
+    if len(text) < 3:
+        logger.debug(f"Rejected: too short ({len(text)} chars): {text}")
+        return False
+
+    # Count Japanese characters (hiragana, katakana, kanji)
+    hiragana = re.findall(r'[\u3040-\u309F]', text)  # ぁ-ん
+    katakana = re.findall(r'[\u30A0-\u30FF]', text)  # ァ-ヶ
+    kanji = re.findall(r'[\u4E00-\u9FFF]', text)     # CJK unified ideographs
+
+    japanese_chars = len(hiragana) + len(katakana) + len(kanji)
+    total_chars = len(text)
+
+    # At least 50% must be Japanese characters
+    if japanese_chars < total_chars * 0.5:
+        logger.debug(
+            f"Rejected: only {japanese_chars}/{total_chars} Japanese chars: {text}"
+        )
+        return False
+
+    # Reject if mostly repetitive (e.g., "ののののの")
+    if len(set(text)) < len(text) * 0.3:
+        logger.debug(f"Rejected: too repetitive: {text}")
+        return False
+
+    logger.debug(f"Accepted: {japanese_chars}/{total_chars} Japanese chars: {text}")
+    return True
+
+
 class OCRClient:
     """
     Client for extracting Japanese text from game screenshots.
@@ -62,7 +110,7 @@ class OCRClient:
             image: PIL Image to extract text from
 
         Returns:
-            Extracted Japanese text as string (empty if no text found)
+            Extracted Japanese text as string (empty if no valid text found)
 
         Raises:
             Exception: If OCR fails
@@ -77,7 +125,14 @@ class OCRClient:
             # Clean up text (remove extra whitespace, normalize)
             text = text.strip()
 
-            logger.debug(f"OCR extracted: {text[:100]}...")
+            logger.debug(f"OCR raw result: {text[:100]}...")
+
+            # Validate result (filter hallucinations from background noise)
+            if not _is_valid_japanese_text(text):
+                logger.info(f"OCR result rejected as hallucination: {text[:50]}...")
+                return ""
+
+            logger.info(f"OCR accepted: {text}")
             return text
 
         except Exception as e:
