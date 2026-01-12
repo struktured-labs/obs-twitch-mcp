@@ -62,27 +62,37 @@ class VisionClient:
         """
         if prompt is None:
             prompt = """
-            Analyze this game screenshot and OCR ALL Japanese text you see, including:
-            - Character names
-            - All dialogue lines
-            - Any other visible text
+            Analyze this game screenshot and OCR Japanese text from the DIALOGUE BOX only.
 
-            Translate ALL the Japanese text to English, preserving line breaks.
+            ONLY translate:
+            - Character names in dialogue
+            - Dialogue text spoken by characters
+            - Story/narrative text in dialogue boxes
+
+            IGNORE and do NOT translate:
+            - UI elements (menus, buttons, status text)
+            - Score displays, item names, or HUD text
+            - Small labels or single-word UI text
+            - Any text that appears to be part of menus or interfaces
+
+            If you see a dialogue box with character dialogue, translate ALL text in that box.
+            If there is NO dialogue box or active dialogue, return empty strings.
 
             Return ONLY a valid JSON object with this exact format:
             {
-                "japanese_text": "<ALL original Japanese text you found, with line breaks>",
-                "english_text": "<Complete English translation, with line breaks>"
+                "japanese_text": "<Original Japanese dialogue text with line breaks>",
+                "english_text": "<English translation with line breaks>"
             }
 
-            If there is no Japanese text visible, return:
+            If there is no active dialogue on screen, return:
             {
                 "japanese_text": "",
                 "english_text": ""
             }
 
             Important:
-            - Read ALL text, not just the most prominent line
+            - Only translate dialogue, NOT UI elements
+            - If the text looks like a menu or status display, return empty
             - Preserve line breaks in both Japanese and English
             - Return ONLY the JSON object, no additional text
             """

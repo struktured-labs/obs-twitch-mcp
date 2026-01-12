@@ -76,6 +76,8 @@ class TranslationService:
     last_hash: imagehash.ImageHash | None = None
     last_translation: dict | None = None
     last_detection_time: float = 0.0
+    last_change_time: float = 0.0  # Track when dialogue last changed
+    last_translation_text: str = ""  # Track exact text to detect staleness
 
     # Statistics
     total_screenshots: int = 0
@@ -109,6 +111,7 @@ class TranslationService:
             # Reset state when starting
             self.last_hash = None
             self.last_translation = None
+            self.last_change_time = time.time()
 
             self._task = asyncio.create_task(
                 self._translation_loop(obs_client, translate_fn, overlay_fn, clear_overlay_fn)
@@ -255,10 +258,18 @@ class TranslationService:
             f.write(f"Frame {self.total_screenshots}: has_changed={has_changed}, last_hash={self.last_hash is not None}\n")
 
         logger.debug(f"Change detection: has_changed={has_changed}")
-        if not has_changed:
+
+        # Force re-check if dialogue hasn't changed in 5 seconds (to detect removal)
+        time_since_change = time.time() - self.last_change_time if self.last_change_time > 0 else 0
+        force_recheck = time_since_change > 5.0 and self.last_translation is not None
+
+        if not has_changed and not force_recheck:
             self.api_calls_saved += 1
             print(f"[SERVICE] No change detected, skipping (saved={self.api_calls_saved})", flush=True)
             return
+
+        if force_recheck:
+            print(f"[SERVICE] Forcing recheck (no change for {time_since_change:.1f}s)", flush=True)
 
         # 5. Translate changed dialogue
         print("[TRANSLATION SERVICE] Change detected! Starting translation...", flush=True)
@@ -289,18 +300,36 @@ class TranslationService:
                 if clear_overlay_fn:
                     await clear_overlay_fn()
                 self.last_translation = None
+                self.last_change_time = time.time()  # Reset change timer
                 return
 
-            # 6. Update overlay
-            logger.info(f"Calling overlay with: {translation['english_text']}")
-            await overlay_fn(
-                japanese_text=translation.get("japanese_text", ""),
-                english_text=translation["english_text"],
-            )
-            logger.info("Overlay called successfully")
+            # 6. Check if this is the same text (stale detection)
+            current_text = translation["english_text"]
+            if current_text == self.last_translation_text:
+                # Same text - check if it's been too long (30 seconds)
+                time_with_same_text = time.time() - self.last_change_time
+                if time_with_same_text > 30.0:
+                    logger.info(f"Translation stale for {time_with_same_text:.1f}s, clearing")
+                    print(f"[TRANSLATION SERVICE] Stale translation detected ({time_with_same_text:.1f}s), clearing", flush=True)
+                    if clear_overlay_fn:
+                        await clear_overlay_fn()
+                    self.last_translation = None
+                    self.last_translation_text = ""
+                    self.last_change_time = time.time()
+                    return
+            else:
+                # New text - update overlay
+                logger.info(f"Calling overlay with: {translation['english_text']}")
+                await overlay_fn(
+                    japanese_text=translation.get("japanese_text", ""),
+                    english_text=translation["english_text"],
+                )
+                logger.info("Overlay called successfully")
 
-            self.last_translation = translation
-            self.total_translations += 1
+                self.last_translation = translation
+                self.last_translation_text = current_text
+                self.total_translations += 1
+                self.last_change_time = time.time()  # Update change timestamp
 
             # Update statistics
             latency_ms = (time.time() - start_time) * 1000
