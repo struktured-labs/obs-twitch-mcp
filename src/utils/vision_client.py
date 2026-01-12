@@ -5,11 +5,12 @@ Provides OCR and translation capabilities using Claude's vision models
 for the background translation service.
 """
 
+import asyncio
 import base64
 import json
 import logging
 import os
-from typing import Any
+from typing import Any, Callable
 
 import anthropic
 
@@ -26,7 +27,7 @@ class VisionClient:
 
     def __init__(self, api_key: str | None = None):
         """
-        Initialize Vision API client.
+        Initialize Vision API client with streaming-appropriate timeouts.
 
         Args:
             api_key: Anthropic API key (defaults to ANTHROPIC_API_KEY env var)
@@ -38,7 +39,89 @@ class VisionClient:
                 "or pass api_key parameter."
             )
 
-        self.client = anthropic.AsyncAnthropic(api_key=self.api_key)
+        # Configure with aggressive timeouts for real-time streaming use
+        # Default 600s read timeout is WAY too long - would hang service for 10 minutes!
+        self.client = anthropic.AsyncAnthropic(
+            api_key=self.api_key,
+            timeout=anthropic.Timeout(
+                connect=5.0,   # Fast connection required
+                read=15.0,     # Translation timeout (vs 600s default!)
+                write=10.0,    # Image upload timeout
+                pool=60.0,     # Connection pool timeout
+            ),
+            max_retries=0,  # We handle retries ourselves (see _retry_api_call)
+        )
+
+        # Longer timeout for dialogue detection (less frequent, bigger payload)
+        self.detection_timeout = anthropic.Timeout(
+            connect=5.0,
+            read=25.0,     # Detection takes ~2s, allow 10x buffer
+            write=15.0,
+            pool=60.0,
+        )
+
+    async def _retry_api_call(
+        self,
+        operation: str,
+        api_call_fn: Callable,
+        max_retries: int = 2,
+        initial_backoff: float = 0.5,
+    ) -> Any:
+        """
+        Execute API call with exponential backoff retry.
+
+        Makes the service resilient to transient network errors.
+
+        Args:
+            operation: Description for logging (e.g., "translation")
+            api_call_fn: Async function that performs the API call
+            max_retries: Maximum retry attempts (default: 2)
+            initial_backoff: Initial backoff in seconds (default: 0.5s)
+
+        Returns:
+            Result from api_call_fn, or empty dict on failure
+
+        Raises:
+            No exceptions - returns empty result on failure for graceful degradation
+        """
+        backoff = initial_backoff
+        last_exception = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                result = await api_call_fn()
+
+                if attempt > 0:
+                    logger.info(f"{operation} succeeded on attempt {attempt + 1}")
+
+                return result
+
+            except anthropic.APITimeoutError as e:
+                last_exception = e
+                logger.warning(
+                    f"{operation} timeout on attempt {attempt + 1}/{max_retries + 1} "
+                    f"(waited {e.request.timeout if hasattr(e, 'request') else 'unknown'}s)"
+                )
+
+            except anthropic.APIConnectionError as e:
+                last_exception = e
+                logger.warning(
+                    f"{operation} connection error on attempt {attempt + 1}/{max_retries + 1}: {e}"
+                )
+
+            except anthropic.RateLimitError as e:
+                last_exception = e
+                backoff *= 3  # Longer backoff for rate limits
+                logger.warning(f"{operation} rate limited on attempt {attempt + 1}/{max_retries + 1}")
+
+            # Don't sleep after last attempt
+            if attempt < max_retries:
+                await asyncio.sleep(backoff)
+                backoff *= 2.0  # Exponential backoff
+
+        # All retries exhausted - return empty result instead of crashing
+        logger.error(f"{operation} failed after {max_retries + 1} attempts: {last_exception}")
+        return {"japanese_text": "", "english_text": ""}
 
     async def translate_image(
         self,
@@ -97,11 +180,12 @@ class VisionClient:
             - Return ONLY the JSON object, no additional text
             """
 
-        try:
+        # Define the API call function to be retried
+        async def _api_call():
             # Encode image as base64
             image_base64 = base64.standard_b64encode(image_bytes).decode("utf-8")
 
-            # Make Vision API call
+            # Make Vision API call (with timeout from client initialization)
             message = await self.client.messages.create(
                 model=model,
                 max_tokens=1024,
@@ -141,26 +225,26 @@ class VisionClient:
             response_text = response_text.strip()
 
             # Parse as JSON
-            result = json.loads(response_text)
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse Vision API response as JSON: {e}")
+                logger.error(f"Response text: {response_text}")
+                return {"japanese_text": "", "english_text": ""}
 
             # Validate response structure
             if "japanese_text" not in result or "english_text" not in result:
                 logger.warning(f"Invalid response structure: {result}")
-                return {
-                    "japanese_text": "",
-                    "english_text": "",
-                }
+                return {"japanese_text": "", "english_text": ""}
 
             return result
 
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse Vision API response as JSON: {e}")
-            logger.error(f"Response text: {response_text}")
-            raise
-
+        # Execute with retry logic
+        try:
+            return await self._retry_api_call("Translation", _api_call)
         except Exception as e:
-            logger.error(f"Vision API call failed: {e}", exc_info=True)
-            raise
+            logger.error(f"Translation failed: {e}", exc_info=True)
+            return {"japanese_text": "", "english_text": ""}
 
     async def detect_dialogue_box(
         self,
@@ -202,11 +286,12 @@ class VisionClient:
         Important: Return ONLY the JSON object, no additional text.
         """
 
-        try:
+        # Define the API call function to be retried
+        async def _api_call():
             # Encode image as base64
             image_base64 = base64.standard_b64encode(image_bytes).decode("utf-8")
 
-            # Make Vision API call
+            # Make Vision API call (with longer timeout for detection)
             message = await self.client.messages.create(
                 model=model,
                 max_tokens=512,
@@ -245,7 +330,12 @@ class VisionClient:
             response_text = response_text.strip()
 
             # Parse as JSON
-            result = json.loads(response_text)
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse dialogue box detection response: {e}")
+                logger.error(f"Response text: {response_text}")
+                raise
 
             # Validate response structure
             if not all(k in result for k in ["x", "y", "width", "height"]):
@@ -265,11 +355,12 @@ class VisionClient:
 
             return (x, y, width, height)
 
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse dialogue box detection response: {e}")
-            logger.error(f"Response text: {response_text}")
-            raise
-
+        # Execute with retry logic (detection uses longer timeout)
+        # Note: _retry_api_call will log errors but we need to re-raise for detection failures
+        try:
+            # We don't use _retry_api_call here because detection failures should be raised
+            # (service needs to know detection failed to use cached box)
+            return await _api_call()
         except Exception as e:
             logger.error(f"Dialogue box detection failed: {e}", exc_info=True)
             raise

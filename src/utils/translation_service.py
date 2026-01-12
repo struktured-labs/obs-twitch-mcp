@@ -85,10 +85,19 @@ class TranslationService:
     api_calls_saved: int = 0
     avg_latency_ms: float = 0.0
 
-    # Background task
+    # Background tasks
     _task: asyncio.Task | None = None
+    _detection_task: asyncio.Task | None = None  # NEW: parallel detection
+    _processing_frame: bool = False  # NEW: busy flag for frame skipping
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     _debug_counter: int = 0
+
+    # Instrumentation (NEW for Phase 3)
+    screenshot_time_ms: float = 0.0
+    detection_time_ms: float = 0.0
+    translation_time_ms: float = 0.0
+    frames_skipped: int = 0
+    detection_failures: int = 0
 
     async def start(self, obs_client, translate_fn, overlay_fn, clear_overlay_fn=None) -> dict:
         """
@@ -107,15 +116,25 @@ class TranslationService:
             if self.enabled:
                 return {"status": "already_running"}
 
-            self.enabled = True
-            # Reset state when starting
+            # Reset ALL state when starting (comprehensive reset to fix restart issues)
             self.last_hash = None
             self.last_translation = None
+            self.last_translation_text = ""  # CRITICAL FIX: was missing, caused stale detection on restart
             self.last_change_time = time.time()
 
+            # Create main translation loop task
             self._task = asyncio.create_task(
                 self._translation_loop(obs_client, translate_fn, overlay_fn, clear_overlay_fn)
             )
+
+            # Create background detection loop task (NEW - Phase 2 Step 2.3)
+            # This runs independently to avoid blocking main loop (eliminates 2000ms stalls)
+            self._detection_task = asyncio.create_task(
+                self._detection_loop(obs_client)
+            )
+
+            # Only mark as enabled AFTER both tasks created successfully (fixes start/stop race)
+            self.enabled = True
 
             logger.info(
                 f"Translation service started (poll_interval={self.poll_interval}s, "
@@ -145,6 +164,7 @@ class TranslationService:
 
             self.enabled = False
 
+            # Cancel main translation loop
             if self._task:
                 self._task.cancel()
                 try:
@@ -152,6 +172,15 @@ class TranslationService:
                 except asyncio.CancelledError:
                     pass
                 self._task = None
+
+            # Cancel background detection loop (NEW - Phase 2 Step 2.3)
+            if self._detection_task:
+                self._detection_task.cancel()
+                try:
+                    await self._detection_task
+                except asyncio.CancelledError:
+                    pass
+                self._detection_task = None
 
             stats = self.get_status()
 
@@ -190,6 +219,17 @@ class TranslationService:
 
         while self.enabled:
             try:
+                # Frame skipping (CRITICAL FIX Phase 2 Step 2.4): Skip if previous frame still processing
+                # This prevents service from falling behind when API is slow
+                if self._processing_frame:
+                    self.frames_skipped += 1
+                    logger.debug(
+                        f"Previous frame still processing, skipping frame "
+                        f"(total skipped: {self.frames_skipped})"
+                    )
+                    await asyncio.sleep(self.poll_interval)
+                    continue
+
                 await self._process_frame(obs_client, translate_fn, overlay_fn, clear_overlay_fn)
                 await asyncio.sleep(self.poll_interval)
 
@@ -202,6 +242,63 @@ class TranslationService:
                 # Don't crash on errors, just log and continue
                 await asyncio.sleep(self.poll_interval)
 
+    async def _detection_loop(self, obs_client) -> None:
+        """
+        Background loop for dialogue box detection.
+
+        Runs independently of main translation loop to avoid blocking.
+        Detects dialogue box on startup, then re-detects every detection_interval.
+
+        This is CRITICAL FIX #2.3 - eliminates 2000ms stalls in main loop.
+
+        Args:
+            obs_client: OBS client for screenshots
+        """
+        logger.info("Detection loop started (background, non-blocking)")
+
+        while self.enabled:
+            try:
+                if self._should_detect_dialogue_box():
+                    detect_start = time.time()
+                    logger.info("Starting dialogue box detection...")
+
+                    try:
+                        screenshot_bytes = obs_client.get_screenshot()
+
+                        # Call Vision API for detection
+                        vision_client = get_vision_client()
+                        box = await vision_client.detect_dialogue_box(screenshot_bytes)
+
+                        # Update state with lock
+                        async with self._lock:
+                            self.dialogue_box = box
+                            self.last_detection_time = time.time()
+                            self.detection_time_ms = (time.time() - detect_start) * 1000
+
+                        logger.info(
+                            f"Dialogue box detected ({self.detection_time_ms:.0f}ms): "
+                            f"x={box[0]}, y={box[1]}, w={box[2]}, h={box[3]}"
+                        )
+
+                    except Exception as e:
+                        self.detection_failures += 1
+                        logger.error(
+                            f"Detection failed (attempt {self.detection_failures}): {e}",
+                            exc_info=True
+                        )
+                        # Don't crash detection loop, try again next interval
+
+                # Sleep for detection interval (much longer than poll interval)
+                await asyncio.sleep(self.detection_interval)
+
+            except asyncio.CancelledError:
+                logger.info("Detection loop cancelled")
+                break
+
+            except Exception as e:
+                logger.error(f"Error in detection loop: {e}", exc_info=True)
+                await asyncio.sleep(self.detection_interval)
+
     async def _process_frame(self, obs_client, translate_fn, overlay_fn, clear_overlay_fn=None) -> None:
         """
         Process a single frame for translation.
@@ -212,142 +309,170 @@ class TranslationService:
             overlay_fn: Overlay function
             clear_overlay_fn: Clear overlay function (optional)
         """
-        print(f"[SERVICE] _process_frame called", flush=True)
-        start_time = time.time()
-
-        # 1. Capture screenshot
-        screenshot_bytes = obs_client.get_screenshot()
-        self.total_screenshots += 1
-        print(f"[SERVICE] Screenshot captured: {len(screenshot_bytes)} bytes, total={self.total_screenshots}", flush=True)
-
-        if self.debug_mode:
-            self._save_debug("full_screenshot", screenshot_bytes)
-
-        # 2. Detect/validate dialogue box
-        if self._should_detect_dialogue_box():
-            print(f"[SERVICE] Detecting dialogue box...", flush=True)
-            try:
-                await self._detect_dialogue_box(screenshot_bytes, translate_fn)
-            except Exception as e:
-                logger.error(f"Dialogue box detection failed: {e}")
-                print(f"[SERVICE] Detection failed: {e}", flush=True)
-                # Continue with old box if available
-                if not self.dialogue_box:
-                    return
-
-        # 3. Crop to dialogue region
-        if not self.dialogue_box:
-            logger.warning("No dialogue box detected, skipping frame")
-            print(f"[SERVICE] No dialogue box, skipping", flush=True)
-            return
-
-        print(f"[SERVICE] Cropping to dialogue box: {self.dialogue_box}", flush=True)
-        image = bytes_to_image(screenshot_bytes)
-        cropped = crop_image(image, self.dialogue_box)
-
-        if self.debug_mode:
-            self._save_debug("cropped_dialogue", image_to_bytes(cropped))
-
-        # 4. Detect change
-        print(f"[SERVICE] Checking for changes... last_hash={self.last_hash is not None}", flush=True)
-        has_changed = self._has_changed(cropped)
-        print(f"[SERVICE] Change detection: has_changed={has_changed}", flush=True)
-
-        # Log to file for debugging
-        with open("/tmp/translation_service_debug.log", "a") as f:
-            f.write(f"Frame {self.total_screenshots}: has_changed={has_changed}, last_hash={self.last_hash is not None}\n")
-
-        logger.debug(f"Change detection: has_changed={has_changed}")
-
-        # Force re-check if dialogue hasn't changed in 2 seconds (to detect removal quickly)
-        time_since_change = time.time() - self.last_change_time if self.last_change_time > 0 else 0
-        force_recheck = time_since_change > 2.0 and self.last_translation is not None
-
-        if not has_changed and not force_recheck:
-            self.api_calls_saved += 1
-            print(f"[SERVICE] No change detected, skipping (saved={self.api_calls_saved})", flush=True)
-            return
-
-        if force_recheck:
-            print(f"[SERVICE] Forcing recheck (no change for {time_since_change:.1f}s)", flush=True)
-
-        # 5. Translate changed dialogue
-        print("[TRANSLATION SERVICE] Change detected! Starting translation...", flush=True)
-        logger.info("Change detected! Starting translation...")
-
-        # Log to file
-        with open("/tmp/translation_service_debug.log", "a") as f:
-            f.write(f"Frame {self.total_screenshots}: TRANSLATING!\n")
+        # Mark as busy (CRITICAL FIX Phase 2 Step 2.4)
+        # This flag prevents frame queue pileup when API is slow
+        self._processing_frame = True
 
         try:
-            cropped_bytes = image_to_bytes(cropped)
-            print(f"[TRANSLATION SERVICE] Cropped image: {len(cropped_bytes)} bytes", flush=True)
-            logger.info(f"Cropped image: {len(cropped_bytes)} bytes")
+            print(f"[SERVICE] _process_frame called", flush=True)
+            start_time = time.time()
 
-            translation = await self._translate_region(cropped_bytes, translate_fn)
-            print(f"[TRANSLATION SERVICE] Translation result: {translation}", flush=True)
-            logger.info(f"Translation result: {translation}")
+            # 1. Capture screenshot
+            screenshot_start = time.time()
+            screenshot_bytes = obs_client.get_screenshot()
+            self.total_screenshots += 1
+            self.screenshot_time_ms = (time.time() - screenshot_start) * 1000
+            print(
+                f"[SERVICE] Screenshot captured: {len(screenshot_bytes)} bytes, "
+                f"total={self.total_screenshots}, time={self.screenshot_time_ms:.0f}ms",
+                flush=True
+            )
 
-            # Log translation to file
-            with open("/tmp/translation_service_debug.log", "a") as f:
-                f.write(f"Frame {self.total_screenshots}: Translation={translation}\n")
+            if self.debug_mode:
+                self._save_debug("full_screenshot", screenshot_bytes)
 
-            # Check if dialogue is empty (removed from screen)
-            if not translation or not translation.get("english_text"):
-                logger.info(f"No dialogue detected, clearing overlay")
-                print("[TRANSLATION SERVICE] No dialogue detected, clearing overlay", flush=True)
-                # Clear overlay if dialogue is gone
-                if clear_overlay_fn:
-                    await clear_overlay_fn()
-                self.last_translation = None
-                self.last_change_time = time.time()  # Reset change timer
+            # 2. Check if dialogue box is available (detection happens in background loop)
+            # CRITICAL FIX (Phase 2 Step 2.3): No longer blocks here - detection runs independently
+            if not self.dialogue_box:
+                logger.debug("Waiting for dialogue box detection (background loop will handle this)")
+                print(f"[SERVICE] No dialogue box yet, waiting for background detection...", flush=True)
                 return
 
-            # 6. Check if this is the same text (stale detection - safety fallback only)
-            current_text = translation["english_text"]
-            if current_text == self.last_translation_text:
-                # Same text - check if it's been way too long (60 seconds - safety only)
-                time_with_same_text = time.time() - self.last_change_time
-                if time_with_same_text > 60.0:
-                    logger.info(f"Translation stale for {time_with_same_text:.1f}s, clearing (safety)")
-                    print(f"[TRANSLATION SERVICE] Stale translation safety clear ({time_with_same_text:.1f}s)", flush=True)
+            # 3. Crop to dialogue region
+            print(f"[SERVICE] Cropping to dialogue box: {self.dialogue_box}", flush=True)
+            image = bytes_to_image(screenshot_bytes)
+            cropped = crop_image(image, self.dialogue_box)
+
+            if self.debug_mode:
+                self._save_debug("cropped_dialogue", image_to_bytes(cropped))
+
+            # 4. Detect change (with exception handling and unconditional hash update)
+            print(f"[SERVICE] Checking for changes... last_hash={self.last_hash is not None}", flush=True)
+
+            try:
+                has_changed, new_hash = self._compute_change_status(cropped)
+
+                # Update hash IMMEDIATELY and UNCONDITIONALLY (prevents drift)
+                # This is the CRITICAL fix - hash must always reflect current frame
+                self.last_hash = new_hash
+
+                print(f"[SERVICE] Change detection: has_changed={has_changed}", flush=True)
+
+                # Log to file for debugging
+                with open("/tmp/translation_service_debug.log", "a") as f:
+                    f.write(f"Frame {self.total_screenshots}: has_changed={has_changed}, hash_updated=True\n")
+
+                logger.debug(f"Change detection: has_changed={has_changed}")
+
+            except Exception as e:
+                logger.error(f"Hash computation failed: {e}", exc_info=True)
+                print(f"[SERVICE] Hash computation error: {e}", flush=True)
+                # Don't update hash on error - keep last valid hash
+                self.api_calls_saved += 1
+                return
+
+            # Force re-check with dynamic threshold (not hardcoded)
+            force_recheck_threshold = max(2.0, self.poll_interval * 4)
+            time_since_change = time.time() - self.last_change_time if self.last_change_time > 0 else 0
+            force_recheck = time_since_change > force_recheck_threshold and self.last_translation is not None
+
+            if not has_changed and not force_recheck:
+                self.api_calls_saved += 1
+                print(f"[SERVICE] No change detected, skipping (saved={self.api_calls_saved})", flush=True)
+                return
+
+            if force_recheck:
+                print(f"[SERVICE] Forcing recheck (no change for {time_since_change:.1f}s)", flush=True)
+
+            # 5. Translate changed dialogue
+            print("[TRANSLATION SERVICE] Change detected! Starting translation...", flush=True)
+            logger.info("Change detected! Starting translation...")
+
+            # Log to file
+            with open("/tmp/translation_service_debug.log", "a") as f:
+                f.write(f"Frame {self.total_screenshots}: TRANSLATING!\n")
+
+            try:
+                cropped_bytes = image_to_bytes(cropped)
+                print(f"[TRANSLATION SERVICE] Cropped image: {len(cropped_bytes)} bytes", flush=True)
+                logger.info(f"Cropped image: {len(cropped_bytes)} bytes")
+
+                # Add translation timing
+                translation_start = time.time()
+                translation = await self._translate_region(cropped_bytes, translate_fn)
+                self.translation_time_ms = (time.time() - translation_start) * 1000
+
+                print(f"[TRANSLATION SERVICE] Translation result: {translation}", flush=True)
+                logger.info(f"Translation result: {translation}")
+
+                # Log translation to file
+                with open("/tmp/translation_service_debug.log", "a") as f:
+                    f.write(f"Frame {self.total_screenshots}: Translation={translation}\n")
+
+                # Check if dialogue is empty (removed from screen)
+                if not translation or not translation.get("english_text"):
+                    logger.info(f"No dialogue detected, clearing overlay")
+                    print("[TRANSLATION SERVICE] No dialogue detected, clearing overlay", flush=True)
+                    # Clear overlay if dialogue is gone
                     if clear_overlay_fn:
                         await clear_overlay_fn()
                     self.last_translation = None
-                    self.last_translation_text = ""
-                    self.last_change_time = time.time()
+                    self.last_translation_text = ""  # CRITICAL FIX: reset text to prevent stale detection
+                    self.last_change_time = time.time()  # Reset change timer
                     return
-                # Same text but not stale yet - skip update
-                return
-            else:
-                # New text - update overlay
-                logger.info(f"Calling overlay with: {translation['english_text']}")
-                await overlay_fn(
-                    japanese_text=translation.get("japanese_text", ""),
-                    english_text=translation["english_text"],
+
+                # 6. Check if this is the same text (stale detection - safety fallback only)
+                current_text = translation["english_text"]
+                if current_text == self.last_translation_text:
+                    # Same text - check if it's been way too long (60 seconds - safety only)
+                    time_with_same_text = time.time() - self.last_change_time
+                    if time_with_same_text > 60.0:
+                        logger.info(f"Translation stale for {time_with_same_text:.1f}s, clearing (safety)")
+                        print(f"[TRANSLATION SERVICE] Stale translation safety clear ({time_with_same_text:.1f}s)", flush=True)
+                        if clear_overlay_fn:
+                            await clear_overlay_fn()
+                        self.last_translation = None
+                        self.last_translation_text = ""
+                        self.last_change_time = time.time()
+                        return
+                    # Same text but not stale yet - skip update
+                    return
+                else:
+                    # New text - update overlay
+                    logger.info(f"Calling overlay with: {translation['english_text']}")
+                    await overlay_fn(
+                        japanese_text=translation.get("japanese_text", ""),
+                        english_text=translation["english_text"],
+                    )
+                    logger.info("Overlay called successfully")
+
+                    self.last_translation = translation
+                    self.last_translation_text = current_text
+                    self.total_translations += 1
+                    self.last_change_time = time.time()  # Update change timestamp
+
+                # Update statistics
+                latency_ms = (time.time() - start_time) * 1000
+                if self.avg_latency_ms == 0:
+                    self.avg_latency_ms = latency_ms
+                else:
+                    # Exponential moving average
+                    self.avg_latency_ms = 0.7 * self.avg_latency_ms + 0.3 * latency_ms
+
+                logger.info(
+                    f"Translated dialogue ({latency_ms:.0f}ms total, "
+                    f"{self.screenshot_time_ms:.0f}ms screenshot, "
+                    f"{self.translation_time_ms:.0f}ms API): "
+                    f"{translation['english_text'][:50]}..."
                 )
-                logger.info("Overlay called successfully")
 
-                self.last_translation = translation
-                self.last_translation_text = current_text
-                self.total_translations += 1
-                self.last_change_time = time.time()  # Update change timestamp
+            except Exception as e:
+                logger.error(f"Translation failed: {type(e).__name__}: {e}", exc_info=True)
 
-            # Update statistics
-            latency_ms = (time.time() - start_time) * 1000
-            if self.avg_latency_ms == 0:
-                self.avg_latency_ms = latency_ms
-            else:
-                # Exponential moving average
-                self.avg_latency_ms = 0.7 * self.avg_latency_ms + 0.3 * latency_ms
-
-            logger.info(
-                f"Translated dialogue ({latency_ms:.0f}ms): "
-                f"{translation['english_text'][:50]}..."
-            )
-
-        except Exception as e:
-            logger.error(f"Translation failed: {type(e).__name__}: {e}", exc_info=True)
+        finally:
+            # Clear busy flag (CRITICAL FIX Phase 2 Step 2.4)
+            # Ensures flag is always cleared even if exception occurs
+            self._processing_frame = False
 
     def _should_detect_dialogue_box(self) -> bool:
         """
@@ -396,38 +521,36 @@ class TranslationService:
             logger.error(f"Dialogue box detection error: {e}", exc_info=True)
             raise
 
-    def _has_changed(self, cropped: Image.Image) -> bool:
+    def _compute_change_status(self, cropped: Image.Image) -> tuple[bool, imagehash.ImageHash]:
         """
         Check if cropped dialogue region has changed since last frame.
 
-        Uses perceptual hashing to detect visual changes. Updates last_hash
-        if change detected.
+        PURE FUNCTION - does not mutate state. This prevents race conditions
+        and hash drift by allowing unconditional hash updates in the caller.
 
         Args:
             cropped: Cropped PIL Image of dialogue region
 
         Returns:
-            True if dialogue has changed (or first frame)
+            Tuple of (has_changed: bool, current_hash: ImageHash)
         """
         current_hash = compute_perceptual_hash(cropped)
 
         # First frame - always translate
         if self.last_hash is None:
-            self.last_hash = current_hash
-            return True
+            logger.debug("First frame - marking as changed")
+            return (True, current_hash)
 
         # Compare with previous frame
         distance = compare_hashes(current_hash, self.last_hash)
+        has_changed = distance >= self.change_threshold
 
-        if distance >= self.change_threshold:
-            # Changed - update hash and translate
-            self.last_hash = current_hash
-            logger.debug(f"Dialogue changed (distance={distance})")
-            return True
+        if has_changed:
+            logger.debug(f"Dialogue changed (distance={distance}, threshold={self.change_threshold})")
         else:
-            # No change - skip translation
-            logger.debug(f"Dialogue unchanged (distance={distance})")
-            return False
+            logger.debug(f"Dialogue unchanged (distance={distance}, threshold={self.change_threshold})")
+
+        return (has_changed, current_hash)
 
     async def _translate_region(self, cropped_bytes: bytes, translate_fn) -> dict:
         """
@@ -471,8 +594,15 @@ class TranslationService:
         Get current service status and statistics.
 
         Returns:
-            Status dict with configuration, state, and statistics
+            Status dict with configuration, state, statistics, and timing breakdown.
+
+            NEW in Phase 3: Added timing breakdown and frame skipping metrics for debugging.
         """
+        # Calculate effective FPS (frames per second)
+        effective_fps = 0.0
+        if self.avg_latency_ms > 0:
+            effective_fps = 1000.0 / self.avg_latency_ms
+
         return {
             "enabled": self.enabled,
             "configuration": {
@@ -484,13 +614,22 @@ class TranslationService:
             "state": {
                 "dialogue_box": self.dialogue_box,
                 "last_translation": self.last_translation,
+                "processing_frame": self._processing_frame,  # NEW: shows if busy
             },
             "statistics": {
                 "total_screenshots": self.total_screenshots,
                 "total_translations": self.total_translations,
                 "api_calls_saved": self.api_calls_saved,
+                "frames_skipped": self.frames_skipped,  # NEW
+                "detection_failures": self.detection_failures,  # NEW
                 "efficiency_percent": self._efficiency_percent(),
                 "avg_latency_ms": round(self.avg_latency_ms, 1),
+            },
+            "timing": {  # NEW: Timing breakdown for debugging
+                "avg_screenshot_ms": round(self.screenshot_time_ms, 1),
+                "avg_translation_ms": round(self.translation_time_ms, 1),
+                "last_detection_ms": round(self.detection_time_ms, 1),
+                "effective_fps": round(effective_fps, 2),
             },
         }
 
