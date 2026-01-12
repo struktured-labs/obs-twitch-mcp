@@ -301,3 +301,39 @@ def obs_add_media_source(
 
     client.create_media_source(scene, source_name, file_path, loop)
     return f"Created media source '{source_name}' from: {file_path}"
+
+
+@mcp.tool()
+def obs_add_existing_source(
+    source_name: str,
+    scene_name: str = "",
+    enabled: bool = True,
+) -> str:
+    """
+    Add an existing source/input to a scene.
+
+    This allows you to add a source that already exists in OBS (from another scene
+    or in the input list) to the specified scene without creating a new source.
+
+    Args:
+        source_name: Name of the existing source to add
+        scene_name: Scene to add it to (uses current scene if not specified)
+        enabled: Whether the source should be visible (default: True)
+
+    Example:
+        obs_add_existing_source("castlevania music", "vibe-coding-main")
+    """
+    client = get_obs_client()
+    if not scene_name:
+        scene_name = client.get_current_scene()
+
+    # Check if source already exists in this scene
+    try:
+        client.client.get_scene_item_id(scene_name, source_name)
+        return f"Source '{source_name}' already exists in scene '{scene_name}'"
+    except Exception:
+        pass  # Source not in scene, continue to add it
+
+    item_id = client.add_source_to_scene(scene_name, source_name, enabled)
+    state = "visible" if enabled else "hidden"
+    return f"Added '{source_name}' to scene '{scene_name}' (item ID: {item_id}, {state})"

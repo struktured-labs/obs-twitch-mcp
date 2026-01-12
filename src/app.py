@@ -19,6 +19,25 @@ from .utils.sse_server import start_sse_server, broadcast_message_sync, get_sse_
 
 logger = get_logger("app")
 
+# Load ANTHROPIC_API_KEY from setenv.sh if not already set
+if not os.getenv("ANTHROPIC_API_KEY"):
+    setenv_path = Path(__file__).parent.parent / "setenv.sh"
+    if setenv_path.exists():
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["bash", "-c", f"source {setenv_path} && echo $ANTHROPIC_API_KEY"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            api_key = result.stdout.strip()
+            if api_key:
+                os.environ["ANTHROPIC_API_KEY"] = api_key
+                logger.info("Loaded ANTHROPIC_API_KEY from setenv.sh")
+        except Exception as e:
+            logger.warning(f"Could not load ANTHROPIC_API_KEY from setenv.sh: {e}")
+
 # Initialize FastMCP server
 mcp = FastMCP(name="obs-twitch-mcp")
 

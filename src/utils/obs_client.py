@@ -307,3 +307,17 @@ class OBSClient:
     def resume_record(self) -> None:
         """Resume recording."""
         self.client.resume_record()
+
+    def add_source_to_scene(self, scene_name: str, source_name: str, enabled: bool = True) -> int:
+        """Add an existing source/input to a scene.
+
+        Args:
+            scene_name: Scene to add the source to
+            source_name: Name of the existing source/input
+            enabled: Whether the source should be visible (default: True)
+
+        Returns:
+            The scene item ID of the newly created item
+        """
+        result = self.client.create_scene_item(scene_name, source_name, enabled)
+        return result.scene_item_id
