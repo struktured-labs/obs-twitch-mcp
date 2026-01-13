@@ -371,8 +371,9 @@ class TranslationService:
                 self.api_calls_saved += 1
                 return
 
-            # Force re-check with dynamic threshold (not hardcoded)
-            force_recheck_threshold = max(2.0, self.poll_interval * 4)
+            # Force re-check if we're showing a translation (to detect dialogue disappearing)
+            # Check every 2 poll cycles (~4s) to clear overlay quickly when dialogue ends
+            force_recheck_threshold = self.poll_interval * 2
             time_since_change = time.time() - self.last_change_time if self.last_change_time > 0 else 0
             force_recheck = time_since_change > force_recheck_threshold and self.last_translation is not None
 
@@ -382,7 +383,7 @@ class TranslationService:
                 return
 
             if force_recheck:
-                print(f"[SERVICE] Forcing recheck (no change for {time_since_change:.1f}s)", flush=True)
+                print(f"[SERVICE] Forcing recheck to detect dialogue removal (no change for {time_since_change:.1f}s)", flush=True)
 
             # 5. Translate changed dialogue
             print("[TRANSLATION SERVICE] Change detected! Starting translation...", flush=True)
