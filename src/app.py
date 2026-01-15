@@ -16,6 +16,7 @@ from .utils.chat_listener import ChatListener
 from .utils.twitch_auth import get_valid_token
 from .utils.chat_filter import get_chat_filter
 from .utils.sse_server import start_sse_server, broadcast_message_sync, get_sse_server
+from .utils.spam_filter import enable_spam_filter
 
 logger = get_logger("app")
 
@@ -190,6 +191,20 @@ def start_chat_listener() -> ChatListener:
 
     # Add SSE broadcast handler
     _chat_listener.add_handler(_create_sse_handler())
+
+    # Add spam filter handler (auto-bans spammers)
+    def ban_callback(username: str, reason: str):
+        """Ban a user via Twitch API."""
+        try:
+            twitch = get_twitch_client()
+            twitch.ban_user(username, reason)
+            logger.info(f"Spam filter banned {username}: {reason}")
+        except Exception as e:
+            logger.error(f"Spam filter failed to ban {username}: {e}")
+
+    spam_filter = enable_spam_filter(ban_callback)
+    _chat_listener.add_handler(spam_filter.handle_message)
+    logger.info("Spam filter enabled - will auto-ban accounts posting spam")
 
     _chat_listener.start()
     return _chat_listener
