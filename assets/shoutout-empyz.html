@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .container {
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        /* Gothic castle background effect */
+        .castle-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, 
+                rgba(20, 0, 40, 0.9) 0%, 
+                rgba(80, 0, 0, 0.9) 100%);
+            animation: pulseGlow 3s ease-in-out infinite;
+        }
+        
+        /* Lightning flash effect */
+        .lightning {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0);
+            animation: lightning 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+        
+        /* Main shoutout text */
+        .shoutout-text {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+        
+        .shoutout-label {
+            font-size: 80px;
+            font-weight: bold;
+            color: #8B0000;
+            text-shadow: 
+                0 0 30px rgba(255, 0, 0, 0.8),
+                0 0 60px rgba(255, 0, 0, 0.6),
+                4px 4px 0px rgba(0, 0, 0, 0.9);
+            animation: float 3s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        
+        .streamer-name {
+            font-size: 180px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 
+                0 0 40px rgba(255, 215, 0, 0.9),
+                0 0 80px rgba(255, 215, 0, 0.7),
+                0 0 120px rgba(255, 100, 0, 0.5),
+                6px 6px 0px rgba(0, 0, 0, 0.9);
+            animation: dramaticZoom 2s ease-out, glow 2s ease-in-out infinite;
+            letter-spacing: 10px;
+        }
+        
+        /* Flying bats */
+        .bat {
+            position: absolute;
+            font-size: 80px;
+            animation: flyAcross 8s linear infinite;
+            filter: drop-shadow(0 0 20px rgba(139, 0, 0, 0.8));
+        }
+        
+        .bat:nth-child(2) { animation-delay: -2s; top: 20%; }
+        .bat:nth-child(3) { animation-delay: -4s; top: 60%; }
+        .bat:nth-child(4) { animation-delay: -6s; top: 80%; }
+        
+        /* Candles at bottom */
+        .candles {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 100px;
+            animation: candleFlicker 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+        
+        @keyframes lightning {
+            0%, 10%, 11%, 100% { background: rgba(255, 255, 255, 0); }
+            10.5% { background: rgba(255, 255, 255, 0.8); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+            50% { transform: translate(-50%, -50%) translateY(-20px); }
+        }
+        
+        @keyframes dramaticZoom {
+            0% { 
+                transform: scale(0.3) rotate(-5deg);
+                opacity: 0;
+            }
+            60% {
+                transform: scale(1.1) rotate(2deg);
+            }
+            100% { 
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes glow {
+            0%, 100% { 
+                text-shadow: 
+                    0 0 40px rgba(255, 215, 0, 0.9),
+                    0 0 80px rgba(255, 215, 0, 0.7),
+                    0 0 120px rgba(255, 100, 0, 0.5),
+                    6px 6px 0px rgba(0, 0, 0, 0.9);
+            }
+            50% { 
+                text-shadow: 
+                    0 0 60px rgba(255, 215, 0, 1),
+                    0 0 120px rgba(255, 215, 0, 0.9),
+                    0 0 180px rgba(255, 100, 0, 0.7),
+                    6px 6px 0px rgba(0, 0, 0, 0.9);
+            }
+        }
+        
+        @keyframes flyAcross {
+            0% { 
+                left: -150px;
+                transform: scaleX(1);
+            }
+            48% {
+                transform: scaleX(1);
+            }
+            50% {
+                transform: scaleX(-1);
+            }
+            100% { 
+                left: 2000px;
+                transform: scaleX(-1);
+            }
+        }
+        
+        @keyframes candleFlicker {
+            0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+            25% { opacity: 0.8; transform: translateX(-50%) scale(0.95); }
+            50% { opacity: 1; transform: translateX(-50%) scale(1.05); }
+            75% { opacity: 0.9; transform: translateX(-50%) scale(0.98); }
+        }
+        
+        /* Auto-remove after 30 seconds */
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+        
+        .container {
+            animation: fadeIn 0.5s ease-in, fadeOut 2s ease-out 28s forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="castle-bg"></div>
+        <div class="lightning"></div>
+        
+        <div class="bat" style="top: 10%;">🦇</div>
+        <div class="bat" style="top: 30%;">🦇</div>
+        <div class="bat" style="top: 50%;">🦇</div>
+        <div class="bat" style="top: 70%;">🦇</div>
+        
+        <div class="shoutout-text">
+            <div class="shoutout-label">SHOUTOUT TO</div>
+            <div class="streamer-name">EMPYZ</div>
+        </div>
+        
+        <div class="candles">🕯️ 🕯️ 🕯️ 🕯️ 🕯️</div>
+    </div>
+</body>
+</html>

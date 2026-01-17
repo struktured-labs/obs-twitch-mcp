@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .container {
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        /* Sunset gradient background */
+        .sunset-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, 
+                rgba(255, 140, 0, 0.7) 0%, 
+                rgba(255, 69, 0, 0.7) 50%,
+                rgba(75, 0, 130, 0.8) 100%);
+            animation: sunset 3s ease-in-out;
+        }
+        
+        /* Goodbye text */
+        .goodbye-text {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+        
+        .main-text {
+            font-size: 120px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 
+                0 0 30px rgba(255, 215, 0, 0.9),
+                0 0 60px rgba(255, 140, 0, 0.7),
+                4px 4px 0px rgba(0, 0, 0, 0.8);
+            animation: wave 2s ease-in-out infinite;
+        }
+        
+        .sub-text {
+            font-size: 60px;
+            color: #FF8C00;
+            text-shadow: 
+                0 0 20px rgba(255, 140, 0, 0.8),
+                2px 2px 0px rgba(0, 0, 0, 0.8);
+            margin-top: 20px;
+        }
+        
+        /* Walking lion */
+        .lion-walk {
+            position: absolute;
+            bottom: 200px;
+            left: -200px;
+            font-size: 150px;
+            animation: walkOff 5s linear forwards;
+            filter: drop-shadow(0 0 20px rgba(255, 140, 0, 0.8));
+        }
+        
+        /* Stars appearing */
+        .star {
+            position: absolute;
+            font-size: 40px;
+            animation: twinkle 2s ease-in-out infinite;
+            opacity: 0;
+        }
+        
+        .star:nth-child(1) { top: 20%; left: 15%; animation-delay: 0.5s; }
+        .star:nth-child(2) { top: 30%; left: 80%; animation-delay: 1s; }
+        .star:nth-child(3) { top: 15%; left: 50%; animation-delay: 1.5s; }
+        .star:nth-child(4) { top: 40%; left: 25%; animation-delay: 2s; }
+        .star:nth-child(5) { top: 35%; left: 70%; animation-delay: 2.5s; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes sunset {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.9; }
+        }
+        
+        @keyframes wave {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1);
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.05);
+            }
+        }
+        
+        @keyframes walkOff {
+            0% { left: -200px; }
+            100% { left: 2100px; }
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { 
+                opacity: 0;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 1;
+                transform: scale(1.3);
+            }
+        }
+        
+        /* Auto-remove after 6 seconds */
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+        
+        .container {
+            animation: fadeIn 0.5s ease-in, fadeOut 1s ease-out 5s forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sunset-bg"></div>
+        
+        <div class="star">⭐</div>
+        <div class="star">⭐</div>
+        <div class="star">⭐</div>
+        <div class="star">⭐</div>
+        <div class="star">⭐</div>
+        
+        <div class="goodbye-text">
+            <div class="main-text">See you later, leouran! 🦁</div>
+            <div class="sub-text">Thanks for the vibes!</div>
+        </div>
+        
+        <div class="lion-walk">🦁👋</div>
+    </div>
+</body>
+</html>

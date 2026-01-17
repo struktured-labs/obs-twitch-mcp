@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            font-family: 'Impact', 'Arial Black', sans-serif;
+        }
+        
+        .container {
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        /* Electric energy background */
+        .energy-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, 
+                rgba(0, 255, 255, 0.3) 0%, 
+                rgba(0, 100, 255, 0.5) 50%,
+                rgba(138, 43, 226, 0.7) 100%);
+            animation: energyPulse 2s ease-in-out infinite;
+        }
+        
+        /* Lightning bolts */
+        .lightning {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0);
+            animation: lightning 1.5s ease-in-out infinite;
+            pointer-events: none;
+        }
+        
+        /* Main power-up text */
+        .powerup-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+        
+        .main-title {
+            font-size: 140px;
+            font-weight: bold;
+            color: #00FFFF;
+            text-shadow: 
+                0 0 40px rgba(0, 255, 255, 1),
+                0 0 80px rgba(0, 255, 255, 0.8),
+                0 0 120px rgba(0, 100, 255, 0.6),
+                6px 6px 0px rgba(0, 0, 0, 0.9);
+            animation: powerUp 3s ease-out, glow 2s ease-in-out infinite;
+            letter-spacing: 8px;
+        }
+        
+        .sub-title {
+            font-size: 100px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 
+                0 0 30px rgba(255, 215, 0, 1),
+                0 0 60px rgba(255, 140, 0, 0.8),
+                4px 4px 0px rgba(0, 0, 0, 0.9);
+            animation: powerUp 3s ease-out 0.3s both, pulse 1.5s ease-in-out infinite;
+            margin-top: 30px;
+            letter-spacing: 6px;
+        }
+        
+        /* Energy particles */
+        .particle {
+            position: absolute;
+            font-size: 60px;
+            animation: rise 4s linear infinite;
+            opacity: 0;
+        }
+        
+        .particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { left: 25%; animation-delay: 0.5s; }
+        .particle:nth-child(3) { left: 40%; animation-delay: 1s; }
+        .particle:nth-child(4) { left: 55%; animation-delay: 1.5s; }
+        .particle:nth-child(5) { left: 70%; animation-delay: 2s; }
+        .particle:nth-child(6) { left: 85%; animation-delay: 2.5s; }
+        .particle:nth-child(7) { left: 15%; animation-delay: 3s; }
+        .particle:nth-child(8) { left: 60%; animation-delay: 3.5s; }
+        
+        /* Wind streaks */
+        .wind-streak {
+            position: absolute;
+            top: 50%;
+            width: 300px;
+            height: 6px;
+            background: linear-gradient(90deg, 
+                rgba(0, 255, 255, 0) 0%,
+                rgba(0, 255, 255, 0.8) 50%,
+                rgba(0, 255, 255, 0) 100%);
+            animation: windBlast 2s linear infinite;
+        }
+        
+        .wind-streak:nth-child(1) { top: 30%; animation-delay: 0s; }
+        .wind-streak:nth-child(2) { top: 45%; animation-delay: 0.3s; }
+        .wind-streak:nth-child(3) { top: 60%; animation-delay: 0.6s; }
+        .wind-streak:nth-child(4) { top: 75%; animation-delay: 0.9s; }
+        
+        /* Power meter */
+        .power-meter {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        
+        .meter-label {
+            font-size: 50px;
+            color: #FFFFFF;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+            margin-bottom: 10px;
+        }
+        
+        .meter-bar {
+            width: 600px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 4px solid #00FFFF;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+        }
+        
+        .meter-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                #00FFFF 0%, 
+                #FFD700 50%, 
+                #FF69B4 100%);
+            animation: fillMeter 3s ease-out forwards;
+            box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes energyPulse {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            50% { 
+                transform: scale(1.05);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes lightning {
+            0%, 85%, 87%, 100% { background: rgba(255, 255, 255, 0); }
+            86%, 86.5% { background: rgba(255, 255, 255, 0.6); }
+        }
+        
+        @keyframes powerUp {
+            0% { 
+                transform: translate(-50%, -50%) scale(0.2) rotate(-10deg);
+                opacity: 0;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.2) rotate(5deg);
+            }
+            100% { 
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes glow {
+            0%, 100% { 
+                text-shadow: 
+                    0 0 40px rgba(0, 255, 255, 1),
+                    0 0 80px rgba(0, 255, 255, 0.8),
+                    0 0 120px rgba(0, 100, 255, 0.6),
+                    6px 6px 0px rgba(0, 0, 0, 0.9);
+            }
+            50% { 
+                text-shadow: 
+                    0 0 60px rgba(0, 255, 255, 1),
+                    0 0 120px rgba(0, 255, 255, 1),
+                    0 0 180px rgba(0, 100, 255, 0.8),
+                    6px 6px 0px rgba(0, 0, 0, 0.9);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+        
+        @keyframes rise {
+            0% { 
+                bottom: 0;
+                opacity: 0;
+                transform: translateX(0) rotate(0deg);
+            }
+            20% {
+                opacity: 1;
+            }
+            80% {
+                opacity: 1;
+            }
+            100% { 
+                bottom: 1080px;
+                opacity: 0;
+                transform: translateX(100px) rotate(360deg);
+            }
+        }
+        
+        @keyframes windBlast {
+            0% { 
+                left: -350px;
+                opacity: 0;
+            }
+            20% {
+                opacity: 1;
+            }
+            80% {
+                opacity: 1;
+            }
+            100% { 
+                left: 2000px;
+                opacity: 0;
+            }
+        }
+        
+        @keyframes fillMeter {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        
+        /* Auto-remove after 60 seconds */
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+        
+        .container {
+            animation: fadeIn 0.5s ease-in, fadeOut 2s ease-out 58s forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="energy-bg"></div>
+        <div class="lightning"></div>
+        
+        <!-- Wind streaks -->
+        <div class="wind-streak"></div>
+        <div class="wind-streak"></div>
+        <div class="wind-streak"></div>
+        <div class="wind-streak"></div>
+        
+        <!-- Energy particles -->
+        <div class="particle">⚡</div>
+        <div class="particle">💨</div>
+        <div class="particle">✨</div>
+        <div class="particle">⚡</div>
+        <div class="particle">💨</div>
+        <div class="particle">✨</div>
+        <div class="particle">⚡</div>
+        <div class="particle">💨</div>
+        
+        <div class="powerup-text">
+            <div class="main-title">STRUKTURED</div>
+            <div class="sub-title">SECOND WIND! 💨⚡</div>
+        </div>
+        
+        <div class="power-meter">
+            <div class="meter-label">ENERGY RESTORED</div>
+            <div class="meter-bar">
+                <div class="meter-fill"></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
