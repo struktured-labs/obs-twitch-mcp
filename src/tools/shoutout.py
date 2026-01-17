@@ -13,11 +13,18 @@ def shoutout_streamer(
     show_clip: bool = True,
     duration_seconds: int = 15,
     custom_message: str = "",
+    use_profile_data: bool = True,
 ) -> str:
     """
     Shoutout another streamer with optional clip overlay.
 
-    1. Sends shoutout in chat
+    Now includes profile-based personalization:
+    - Mentions if they're a Partner/Affiliate
+    - Includes their current game/category
+    - Shows view count context
+    - Smarter fallback if no clips
+
+    1. Sends personalized shoutout in chat
     2. Optionally displays their latest clip on stream
     3. Auto-removes after duration
 
@@ -26,14 +33,46 @@ def shoutout_streamer(
         show_clip: Whether to show their latest clip (default: True)
         duration_seconds: How long to show the clip overlay
         custom_message: Custom shoutout message (optional)
+        use_profile_data: Personalize with profile info (default: True)
     """
     twitch = get_twitch_client()
     obs = get_obs_client()
 
-    # Send chat shoutout
+    # Generate personalized message
     if custom_message:
         message = f"Go check out @{username}! {custom_message} https://twitch.tv/{username}"
+    elif use_profile_data:
+        # Fetch profile data (uses cache)
+        profile = twitch.get_user_profile(username)
+        channel = twitch.get_channel_info(username)
+
+        # Build context-aware message
+        message_parts = []
+
+        # Broadcaster type
+        if profile and profile.get("broadcaster_type") == "partner":
+            message_parts.append(f"🎯 Go check out verified partner @{username}!")
+        elif profile and profile.get("broadcaster_type") == "affiliate":
+            message_parts.append(f"⭐ Go check out affiliate @{username}!")
+        else:
+            message_parts.append(f"✨ Go check out @{username}!")
+
+        # Game/category
+        if channel and channel.get("game_name"):
+            message_parts.append(f"They stream {channel['game_name']}.")
+
+        # View count context
+        if profile and profile.get("view_count"):
+            views = profile["view_count"]
+            if views > 1000000:
+                message_parts.append(f"Over {views // 1000000}M channel views!")
+            elif views > 10000:
+                message_parts.append(f"{views // 1000}K+ channel views!")
+
+        message_parts.append(f"https://twitch.tv/{username}")
+        message = " ".join(message_parts)
     else:
+        # Fallback to generic message
         message = f"🎉 Go check out @{username}! They're awesome! https://twitch.tv/{username}"
 
     twitch.send_chat_message(message)
@@ -86,6 +125,63 @@ def shoutout_streamer(
             result += " (no clips found)"
 
     return result
+
+
+@mcp.tool()
+def get_streamer_profile(username: str) -> dict:
+    """
+    Get full Twitch profile for a streamer.
+
+    Returns profile data including bio, broadcaster type, view count, etc.
+    Cached for 1 hour to reduce API calls.
+
+    Args:
+        username: Twitch username
+
+    Returns:
+        Profile dict with bio, broadcaster_type, view_count, etc.
+    """
+    twitch = get_twitch_client()
+    profile = twitch.get_user_profile(username)
+
+    if not profile:
+        return {"error": f"User {username} not found"}
+
+    return {
+        "username": profile["login"],
+        "display_name": profile["display_name"],
+        "bio": profile["description"],
+        "broadcaster_type": profile["broadcaster_type"] or "user",
+        "profile_image": profile["profile_image_url"],
+        "view_count": profile["view_count"],
+        "created_at": profile["created_at"],
+    }
+
+
+@mcp.tool()
+def get_streamer_channel_info(username: str) -> dict:
+    """
+    Get current channel info (game, title, language).
+
+    Args:
+        username: Twitch username
+
+    Returns:
+        Channel info dict with current game, title, language
+    """
+    twitch = get_twitch_client()
+    channel = twitch.get_channel_info(username)
+
+    if not channel:
+        return {"error": f"Channel info for {username} not found"}
+
+    return {
+        "username": channel["broadcaster_login"],
+        "display_name": channel["broadcaster_name"],
+        "game": channel["game_name"],
+        "title": channel["title"],
+        "language": channel["broadcaster_language"],
+    }
 
 
 @mcp.tool()

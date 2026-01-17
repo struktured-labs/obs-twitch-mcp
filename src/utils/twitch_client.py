@@ -39,6 +39,9 @@ class TwitchClient:
     _user_id: str | None = None
     _chat_messages: list[ChatMessage] = field(default_factory=list)
     _message_handlers: list[Callable[[ChatMessage], None]] = field(default_factory=list)
+    # Profile cache: {username: {"data": {profile}, "cached_at": timestamp}}
+    _profile_cache: dict[str, dict] = field(default_factory=dict)
+    _profile_cache_max_size: int = 20
 
     def _refresh_token(self) -> bool:
         """Refresh the OAuth token. Returns True if successful."""
@@ -92,6 +95,24 @@ class TwitchClient:
                 logger.warning(f"API call to {url} failed: {resp.status_code} - {resp.text[:200]}")
             return resp
         return resp  # Return last response even if failed
+
+    def _cleanup_profile_cache(self) -> None:
+        """Remove expired entries and enforce max size."""
+        now = time.time()
+
+        # Remove expired (> 1 hour old)
+        self._profile_cache = {
+            k: v
+            for k, v in self._profile_cache.items()
+            if now - v["cached_at"] < 3600
+        }
+
+        # Enforce max size (remove oldest if needed)
+        if len(self._profile_cache) > self._profile_cache_max_size:
+            sorted_items = sorted(
+                self._profile_cache.items(), key=lambda x: x[1]["cached_at"]
+            )
+            self._profile_cache = dict(sorted_items[-self._profile_cache_max_size :])
 
     @property
     def user_id(self) -> str:
@@ -283,12 +304,88 @@ class TwitchClient:
             f"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={self.user_id}&to_broadcaster_id={target_user_id}&moderator_id={self.user_id}",
         )
 
-    def get_user_id(self, username: str) -> str | None:
-        """Get a user's ID from their username."""
+    def get_user_profile(self, username: str) -> dict | None:
+        """
+        Get full user profile data from Twitch API.
+
+        Args:
+            username: Twitch username to lookup
+
+        Returns:
+            Dict with profile data:
+            {
+                "id": "123456",
+                "login": "username",
+                "display_name": "DisplayName",
+                "type": "",  # "user", "bot"
+                "broadcaster_type": "partner|affiliate|",
+                "description": "User's bio/about text",
+                "profile_image_url": "https://...",
+                "offline_image_url": "https://...",
+                "view_count": 1000000,
+                "created_at": "2020-01-01T00:00:00Z"
+            }
+        """
+        # Check cache first
+        cached = self._profile_cache.get(username)
+        if cached and time.time() - cached["cached_at"] < 3600:  # 1 hour TTL
+            return cached["data"]
+
+        # Fetch from API
         resp = self._api_call("get", f"https://api.twitch.tv/helix/users?login={username}")
         user_data = resp.json()
+
         if user_data.get("data"):
-            return user_data["data"][0]["id"]
+            profile = user_data["data"][0]
+
+            # Cache result
+            self._profile_cache[username] = {"data": profile, "cached_at": time.time()}
+
+            # Cleanup cache if needed
+            self._cleanup_profile_cache()
+
+            return profile
+
+        return None
+
+    def get_user_id(self, username: str) -> str | None:
+        """Get a user's ID (uses profile cache internally)."""
+        profile = self.get_user_profile(username)
+        return profile["id"] if profile else None
+
+    def get_channel_info(self, username: str) -> dict | None:
+        """
+        Get channel-specific info (current game, title, etc).
+
+        Args:
+            username: Twitch username to lookup
+
+        Returns:
+            Dict with:
+            {
+                "broadcaster_id": "123456",
+                "broadcaster_login": "username",
+                "broadcaster_name": "DisplayName",
+                "broadcaster_language": "en",
+                "game_id": "...",
+                "game_name": "Game Title",
+                "title": "Stream title here",
+                "delay": 0
+            }
+        """
+        profile = self.get_user_profile(username)
+        if not profile:
+            return None
+
+        user_id = profile["id"]
+        resp = self._api_call(
+            "get", f"https://api.twitch.tv/helix/channels?broadcaster_id={user_id}"
+        )
+        channel_data = resp.json()
+
+        if channel_data.get("data"):
+            return channel_data["data"][0]
+
         return None
 
     def get_streams_by_game(self, game_id: str, count: int = 20) -> list[dict]:
