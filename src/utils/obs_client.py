@@ -321,3 +321,66 @@ class OBSClient:
         """
         result = self.client.create_scene_item(scene_name, source_name, enabled)
         return result.scene_item_id
+
+    # Filter methods
+    def get_source_filter_list(self, source_name: str) -> list[dict]:
+        """Get list of all filters on a source.
+
+        Args:
+            source_name: Name of the source
+
+        Returns:
+            List of filter dicts with name, kind, index, enabled status
+        """
+        result = self.client.get_source_filter_list(source_name)
+        return [
+            {
+                "name": f.filter_name,
+                "kind": f.filter_kind,
+                "index": f.filter_index,
+                "enabled": f.filter_enabled,
+            }
+            for f in result.filters
+        ]
+
+    def get_source_filter(self, source_name: str, filter_name: str) -> dict:
+        """Get settings for a specific filter.
+
+        Args:
+            source_name: Name of the source
+            filter_name: Name of the filter
+
+        Returns:
+            Dict with filter settings
+        """
+        result = self.client.get_source_filter(source_name, filter_name)
+        return {
+            "name": filter_name,
+            "kind": result.filter_kind,
+            "index": result.filter_index,
+            "enabled": result.filter_enabled,
+            "settings": result.filter_settings,
+        }
+
+    def set_source_filter_settings(
+        self, source_name: str, filter_name: str, settings: dict, overlay: bool = True
+    ) -> None:
+        """Update filter settings in real-time.
+
+        Args:
+            source_name: Name of the source
+            filter_name: Name of the filter
+            settings: Dict of settings to update
+            overlay: If True, merge with existing settings. If False, replace all settings.
+        """
+        self.client.set_source_filter_settings(source_name, filter_name, settings, overlay)
+
+    def set_source_filter_enabled(self, source_name: str, filter_name: str, enabled: bool) -> None:
+        """Enable or disable a filter.
+
+        Args:
+            source_name: Name of the source
+            filter_name: Name of the filter
+            enabled: True to enable, False to disable
+        """
+        self.client.set_source_filter_enabled(source_name, filter_name, enabled)

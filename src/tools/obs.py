@@ -337,3 +337,157 @@ def obs_add_existing_source(
     item_id = client.add_source_to_scene(scene_name, source_name, enabled)
     state = "visible" if enabled else "hidden"
     return f"Added '{source_name}' to scene '{scene_name}' (item ID: {item_id}, {state})"
+
+
+# Filter manipulation tools
+@mcp.tool()
+def obs_list_filters(source_name: str) -> list[dict]:
+    """
+    List all filters on an audio or video source.
+
+    Args:
+        source_name: Name of the source (e.g., "Mic/Aux", "Desktop Audio")
+
+    Returns:
+        List of filters with name, kind, index, and enabled status
+    """
+    client = get_obs_client()
+    return client.get_source_filter_list(source_name)
+
+
+@mcp.tool()
+def obs_get_filter(source_name: str, filter_name: str) -> dict:
+    """
+    Get detailed settings for a specific filter.
+
+    Args:
+        source_name: Name of the source
+        filter_name: Name of the filter (e.g., "Noise Gate", "Compressor")
+
+    Returns:
+        Dict with filter configuration including all settings
+    """
+    client = get_obs_client()
+    return client.get_source_filter(source_name, filter_name)
+
+
+@mcp.tool()
+def obs_update_filter(
+    source_name: str,
+    filter_name: str,
+    settings: dict
+) -> str:
+    """
+    Update filter settings in real-time (while stream is live).
+
+    This allows dynamic adjustment of audio processing without restarting OBS.
+
+    Args:
+        source_name: Name of the source
+        filter_name: Name of the filter
+        settings: Dict of settings to update (merges with existing)
+
+    Example:
+        obs_update_filter("Mic/Aux", "Noise Gate", {
+            "close_threshold": -40.0,
+            "open_threshold": -35.0
+        })
+    """
+    client = get_obs_client()
+    client.set_source_filter_settings(source_name, filter_name, settings, overlay=True)
+    return f"Updated filter '{filter_name}' on '{source_name}'"
+
+
+@mcp.tool()
+def obs_enable_filter(source_name: str, filter_name: str, enabled: bool = True) -> str:
+    """
+    Enable or disable a filter.
+
+    Args:
+        source_name: Name of the source
+        filter_name: Name of the filter
+        enabled: True to enable, False to disable
+    """
+    client = get_obs_client()
+    client.set_source_filter_enabled(source_name, filter_name, enabled)
+    state = "enabled" if enabled else "disabled"
+    return f"Filter '{filter_name}' on '{source_name}' {state}"
+
+
+@mcp.tool()
+def obs_apply_audio_preset(
+    source_name: str,
+    preset: str = "noisy"
+) -> dict:
+    """
+    Apply pre-configured audio filter chains for different environments.
+
+    Presets:
+    - "noisy": Optimized for loud road/traffic noise (aggressive noise reduction)
+    - "normal": Balanced settings for typical streaming (moderate noise reduction)
+    - "quiet": Minimal processing for quiet studio environments
+
+    Args:
+        source_name: Name of the audio source (e.g., "Mic/Aux")
+        preset: Environment preset to apply
+
+    Returns:
+        Dict with applied settings and enabled filters
+    """
+    client = get_obs_client()
+    applied = []
+
+    if preset == "noisy":
+        # Noise Suppression - keep enabled
+        applied.append("Noise Suppression (already enabled)")
+
+        # Noise Gate - gentle settings for noisy environment
+        client.set_source_filter_enabled(source_name, "Noise Gate", True)
+        client.set_source_filter_settings(source_name, "Noise Gate", {
+            "close_threshold": -40.0,
+            "open_threshold": -35.0,
+            "attack_time": 25,
+            "hold_time": 200,
+            "release_time": 150,
+        })
+        applied.append("Noise Gate enabled (gentle)")
+
+        # Compressor - re-enable with existing settings
+        client.set_source_filter_enabled(source_name, "Compressor", True)
+        applied.append("Compressor enabled (3.5:1 ratio)")
+
+        # Limiter - adjust threshold
+        client.set_source_filter_settings(source_name, "Limiter", {
+            "threshold": -6.0,
+            "release_time": 50,
+        })
+        applied.append("Limiter adjusted (-6 dB)")
+
+    elif preset == "normal":
+        # Moderate noise reduction
+        client.set_source_filter_enabled(source_name, "Noise Gate", True)
+        client.set_source_filter_settings(source_name, "Noise Gate", {
+            "close_threshold": -45.0,
+            "open_threshold": -40.0,
+            "attack_time": 15,
+            "hold_time": 150,
+            "release_time": 100,
+        })
+        applied.append("Noise Gate enabled (moderate)")
+
+        client.set_source_filter_enabled(source_name, "Compressor", True)
+        applied.append("Compressor enabled")
+
+    elif preset == "quiet":
+        # Minimal processing
+        client.set_source_filter_enabled(source_name, "Noise Gate", False)
+        applied.append("Noise Gate disabled")
+
+        client.set_source_filter_enabled(source_name, "Compressor", False)
+        applied.append("Compressor disabled")
+
+    return {
+        "preset": preset,
+        "source": source_name,
+        "applied": applied,
+    }
