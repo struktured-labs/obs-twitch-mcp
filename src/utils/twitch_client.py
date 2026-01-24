@@ -12,6 +12,7 @@ import httpx
 
 from . import chat_logger
 from .logger import get_logger
+from .panel_scraper import get_panel_scraper
 from .twitch_auth import refresh_token, save_token, load_token
 
 logger = get_logger("twitch_client")
@@ -338,7 +339,17 @@ class TwitchClient:
         if user_data.get("data"):
             profile = user_data["data"][0]
 
-            # Cache result
+            # Scrape panels
+            try:
+                scraper = get_panel_scraper()
+                panels = scraper.scrape_panels_sync(username)
+                profile["panels"] = panels
+                logger.debug(f"Scraped {len(panels)} panels for {username}")
+            except Exception as e:
+                logger.warning(f"Panel scraping failed for {username}: {e}")
+                profile["panels"] = []  # Graceful fallback
+
+            # Cache result (including panels)
             self._profile_cache[username] = {"data": profile, "cached_at": time.time()}
 
             # Cleanup cache if needed

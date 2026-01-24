@@ -132,14 +132,14 @@ def get_streamer_profile(username: str) -> dict:
     """
     Get full Twitch profile for a streamer.
 
-    Returns profile data including bio, broadcaster type, view count, etc.
+    Returns profile data including bio, broadcaster type, view count, panels, etc.
     Cached for 1 hour to reduce API calls.
 
     Args:
         username: Twitch username
 
     Returns:
-        Profile dict with bio, broadcaster_type, view_count, etc.
+        Profile dict with bio, broadcaster_type, view_count, panels, etc.
     """
     twitch = get_twitch_client()
     profile = twitch.get_user_profile(username)
@@ -155,6 +155,7 @@ def get_streamer_profile(username: str) -> dict:
         "profile_image": profile["profile_image_url"],
         "view_count": profile["view_count"],
         "created_at": profile["created_at"],
+        "panels": profile.get("panels", []),
     }
 
 
@@ -195,6 +196,28 @@ def get_streamer_clips(username: str, count: int = 5) -> list[dict]:
     """
     twitch = get_twitch_client()
     return twitch.get_user_clips(username, count)
+
+
+@mcp.tool()
+def get_streamer_panels(username: str) -> list[dict]:
+    """
+    Get custom panels from a Twitch channel (e.g., "My Game Grimoire", "The Rig").
+
+    Returns panels from cache if available (1-hour TTL), otherwise scrapes.
+
+    Args:
+        username: Twitch username
+
+    Returns:
+        List of panel dicts with title, description, image_url, link_url
+    """
+    twitch = get_twitch_client()
+    profile = twitch.get_user_profile(username)
+
+    if not profile:
+        return []
+
+    return profile.get("panels", [])
 
 
 @mcp.tool()

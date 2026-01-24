@@ -22,3 +22,7 @@ assets/nahnegnal-*.html
 assets/womp-womp-*.html
 assets/pngtuber-*.html
 assets/redblackmage-*.png
+
+# Playwright state
+.panel_scraper_cache/
+playwright_state/
