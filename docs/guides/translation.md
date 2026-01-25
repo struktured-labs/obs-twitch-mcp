@@ -3,14 +3,16 @@ layout: default
 title: Translation Guide
 ---
 
-# Real-Time Game Translation
+# Game Translation (Experimental)
 
-This is the killer feature for retro game streamers. Claude watches your screen and translates Japanese text automatically, displaying English subtitles on your stream.
+> **Note:** This feature is experimental. It works reasonably well for dialogue-heavy retro games but may have issues with certain fonts, image quality, or fast-paced text. Your mileage may vary.
 
-**Perfect for:**
-- Japan-only Game Boy/NES/SNES RPGs
-- Visual novels
-- Any game with untranslated text
+Claude can watch your screen and translate Japanese text automatically, displaying English subtitles on your stream.
+
+**Works best with:**
+- Japan-only Game Boy/NES/SNES RPGs with clear dialogue boxes
+- Visual novels with distinct text areas
+- Games with slower-paced dialogue
 
 ---
 

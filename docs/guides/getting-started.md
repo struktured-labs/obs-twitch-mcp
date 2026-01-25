@@ -243,15 +243,33 @@ uv sync
 
 Now that you're set up:
 
-- **[Translation Guide](translation.md)** - Set up real-time Japanese game translation
-- **[Automation Guide](automation.md)** - Auto-welcome viewers, scheduled messages
+- **[Automation Guide](automation.md)** - Auto-welcome viewers, scheduled messages, hype detection
 - **[Tool Reference](tool-reference.md)** - See all 118 available tools
+- **[Translation Guide](translation.md)** - Experimental Japanese game translation
 
 ---
 
-## Optional: Translation Setup
+## Optional: YouTube Upload Setup
 
-If you want to use the translation features, you'll also need:
+For uploading recordings directly to YouTube:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a project
+3. Enable YouTube Data API v3
+4. Create OAuth credentials (Desktop app)
+5. Add to `setenv.sh`:
+   ```bash
+   export YOUTUBE_CLIENT_ID="your_client_id"
+   export YOUTUBE_CLIENT_SECRET="your_client_secret"
+   ```
+
+The first upload will open a browser for authorization.
+
+---
+
+## Optional: Translation Setup (Experimental)
+
+If you want to try the translation features, you'll also need:
 
 1. **Anthropic API Key** from [console.anthropic.com](https://console.anthropic.com)
 2. Add to your `setenv.sh`:
@@ -260,21 +278,3 @@ If you want to use the translation features, you'll also need:
    ```
 
 See the [Translation Guide](translation.md) for full setup.
-
----
-
-## Optional: YouTube Upload Setup
-
-For uploading directly to YouTube:
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a project
-3. Enable YouTube Data API v3
-4. Create OAuth credentials
-5. Add to `setenv.sh`:
-   ```bash
-   export YOUTUBE_CLIENT_ID="your_client_id"
-   export YOUTUBE_CLIENT_SECRET="your_client_secret"
-   ```
-
-The first upload will open a browser for authorization.

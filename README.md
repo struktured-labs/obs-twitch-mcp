@@ -1,28 +1,42 @@
 # OBS + Twitch MCP Server
 
-**Let AI control your stream.** This MCP (Model Context Protocol) server gives Claude direct control over OBS Studio and Twitch, enabling voice-commanded scene switches, automatic Japanese game translation, smart shoutouts, and 100+ streaming tools.
+**Give Claude full control of your stream.** This MCP (Model Context Protocol) server connects Claude directly to OBS Studio, Twitch, and YouTube - letting you manage your entire stream through natural conversation.
 
-Built for streamers who play retro Japanese games, do romhacking, or want AI-assisted stream management.
+No more clicking through menus. Just tell Claude what you want.
 
-**[Full Documentation](https://struktured-labs.github.io/obs-twitch-mcp/)** | [Getting Started](https://struktured-labs.github.io/obs-twitch-mcp/guides/getting-started.html) | [Translation Guide](https://struktured-labs.github.io/obs-twitch-mcp/guides/translation.html)
+**[Full Documentation](https://struktured-labs.github.io/obs-twitch-mcp/)** | [Getting Started](https://struktured-labs.github.io/obs-twitch-mcp/guides/getting-started.html)
 
 ---
 
 ## What Can It Do?
 
-### Talk to Your Stream
+### Natural Language Stream Control
 Tell Claude what you want, and it happens:
 - *"Switch to my BRB scene"* → Scene changes, mic mutes, camera hides
-- *"Shoutout to nahnegnal"* → Personalized message + their clip plays on screen
 - *"I'm back"* → Unmutes, shows camera, welcomes you back in chat
 - *"Clip that!"* → Saves last 30 seconds locally
+- *"Start recording"* → OBS starts recording
+- *"Upload my last recording to YouTube"* → Handles the whole upload flow
 
-### Real-Time Game Translation
-Playing a Japan-only game? Claude watches your screen and translates dialogue automatically:
-- Detects dialogue boxes in retro games (Penta Dragon, Trinea, etc.)
-- OCRs Japanese text using Claude Vision
-- Shows English translation overlay on stream
-- Smart change detection = 60-80% fewer API calls
+### Deep Platform Integration
+
+**OBS Studio** - Full control via WebSocket:
+- Scene switching, source visibility, audio levels
+- Real-time filter adjustments (no OBS restart needed)
+- Recording, replay buffer, screenshots
+- Text overlays, browser sources, media playback
+
+**Twitch** - Complete API access:
+- Chat: send messages, read history, reply to viewers
+- Moderation: ban, timeout, slow mode, emote-only
+- Stream info: update title, game, create polls
+- Raids: find targets, start raids, shoutouts with clips
+- Viewer analytics: track chatters, loyalty, engagement
+
+**YouTube** - Video management:
+- Upload recordings with metadata (title, description, tags)
+- List your videos, get video info
+- Privacy controls (public, unlisted, private)
 
 ### Stream Automation
 - **Auto-welcome** returning viewers by name
@@ -32,6 +46,9 @@ Playing a Japan-only game? Claude watches your screen and translates dialogue au
 
 ### 118 Tools Total
 Scene control, audio filters, chat moderation, polls, clips, YouTube uploads, viewer analytics, and more.
+
+### Experimental: Game Translation
+For retro game streamers - Claude can OCR Japanese text from your game and show English translations as an overlay. Still experimental but works for dialogue-heavy games like Penta Dragon.
 
 ---
 
