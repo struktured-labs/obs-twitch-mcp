@@ -1,0 +1,18 @@
+title: OBS + Twitch MCP Server
+description: Let AI control your stream - 118 tools for OBS and Twitch integration
+theme: jekyll-theme-cayman
+show_downloads: true
+google_analytics:
+plugins:
+  - jekyll-relative-links
+
+relative_links:
+  enabled: true
+  collections: true
+
+# Navigation
+header_pages:
+  - index.md
+  - guides/getting-started.md
+  - guides/translation.md
+  - guides/automation.md
