@@ -1,6 +1,6 @@
 title: OBS + Twitch MCP Server
 description: Let AI control your stream - 118 tools for OBS and Twitch integration
-theme: jekyll-theme-cayman
+remote_theme: pages-themes/midnight@v0.2.0
 show_downloads: true
 google_analytics:
 plugins:

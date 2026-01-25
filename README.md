@@ -4,6 +4,8 @@
 
 Built for streamers who play retro Japanese games, do romhacking, or want AI-assisted stream management.
 
+**[Full Documentation](https://struktured-labs.github.io/obs-twitch-mcp/)** | [Getting Started](https://struktured-labs.github.io/obs-twitch-mcp/guides/getting-started.html) | [Translation Guide](https://struktured-labs.github.io/obs-twitch-mcp/guides/translation.html)
+
 ---
 
 ## What Can It Do?

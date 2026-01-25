@@ -1,0 +1,110 @@
+---
+---
+
+@import "jekyll-theme-midnight";
+
+/* Dark mode enhancements */
+
+/* Better table styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  background: #1a1a1a;
+}
+
+th, td {
+  padding: 0.5em 1em;
+  border: 1px solid #444;
+  text-align: left;
+}
+
+th {
+  background: #252525;
+  color: #79b8ff;
+}
+
+tr:nth-child(even) {
+  background: #1f1f1f;
+}
+
+/* Better code blocks */
+pre {
+  background: #0d0d0d !important;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 1em;
+  overflow-x: auto;
+}
+
+code {
+  background: #1a1a1a;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  color: #79b8ff;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* Better details/summary (collapsible sections) */
+details {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 0.5em 1em;
+  margin: 1em 0;
+}
+
+details summary {
+  cursor: pointer;
+  color: #79b8ff;
+  font-weight: bold;
+}
+
+details summary:hover {
+  color: #58a6ff;
+}
+
+details[open] summary {
+  margin-bottom: 0.5em;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.5em;
+}
+
+/* Better links */
+a {
+  color: #58a6ff;
+}
+
+a:hover {
+  color: #79b8ff;
+  text-decoration: underline;
+}
+
+/* Blockquotes for tips */
+blockquote {
+  border-left: 4px solid #58a6ff;
+  background: #1a1a1a;
+  padding: 0.5em 1em;
+  margin: 1em 0;
+  color: #c9d1d9;
+}
+
+/* Headers */
+h1, h2, h3, h4 {
+  color: #f0f6fc;
+  border-bottom-color: #333;
+}
+
+/* Horizontal rules */
+hr {
+  border-color: #333;
+}
+
+/* Strong text */
+strong {
+  color: #f0f6fc;
+}
