@@ -158,7 +158,7 @@ class PanelScraper:
         finally:
             await page.close()
 
-    def scrape_panels_sync(self, username: str) -> list[dict[str, Any]]:
+    def scrape_panels_sync(self, username: str, timeout_seconds: int = 20) -> list[dict[str, Any]]:
         """
         Scrape panels from a Twitch channel (sync wrapper).
 
@@ -166,18 +166,28 @@ class PanelScraper:
 
         Args:
             username: Twitch username
+            timeout_seconds: Overall timeout for the scrape operation (default: 20s)
 
         Returns:
             List of panel dicts. Returns [] on error.
         """
+        async def _scrape_with_timeout():
+            return await asyncio.wait_for(
+                self.scrape_panels_async(username),
+                timeout=timeout_seconds
+            )
+
         try:
-            # Run async scraping in new event loop
+            # Run async scraping in new event loop with overall timeout
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                return loop.run_until_complete(self.scrape_panels_async(username))
+                return loop.run_until_complete(_scrape_with_timeout())
             finally:
                 loop.close()
+        except asyncio.TimeoutError:
+            logger.warning(f"Panel scraping timed out for {username} after {timeout_seconds}s")
+            return []
         except Exception as e:
             logger.error(f"Sync scraping failed for {username}: {e}")
             return []

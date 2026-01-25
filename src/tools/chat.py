@@ -146,3 +146,52 @@ def twitch_reconnect() -> dict:
             "channel": client.channel,
             "message": "Reconnected but could not validate token - may need to re-auth",
         }
+
+
+@mcp.tool()
+def twitch_create_poll(
+    title: str,
+    choices: list[str],
+    duration: int = 60,
+) -> dict:
+    """
+    Create a poll on Twitch.
+
+    Args:
+        title: Poll question (max 60 chars)
+        choices: List of 2-5 choices (max 25 chars each)
+        duration: Duration in seconds (15-1800, default 60)
+
+    Returns:
+        Poll details including ID for ending early
+    """
+    client = get_twitch_client()
+    return client.create_poll(title, choices, duration)
+
+
+@mcp.tool()
+def twitch_end_poll(poll_id: str, show_results: bool = True) -> dict:
+    """
+    End a poll early.
+
+    Args:
+        poll_id: The poll ID from create_poll
+        show_results: If True, show final results. If False, cancel silently.
+
+    Returns:
+        Final poll results with vote counts
+    """
+    client = get_twitch_client()
+    return client.end_poll(poll_id, archive=show_results)
+
+
+@mcp.tool()
+def twitch_get_polls() -> list[dict]:
+    """
+    Get active and recent polls.
+
+    Returns:
+        List of polls with their status and vote counts
+    """
+    client = get_twitch_client()
+    return client.get_polls()

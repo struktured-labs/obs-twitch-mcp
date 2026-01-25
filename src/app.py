@@ -13,7 +13,7 @@ from .utils.logger import get_logger
 from .utils.obs_client import OBSClient
 from .utils.twitch_client import TwitchClient
 from .utils.chat_listener import ChatListener
-from .utils.twitch_auth import get_valid_token
+from .utils.twitch_auth import get_valid_token, TokenExpiredError
 from .utils.chat_filter import get_chat_filter
 from .utils.sse_server import start_sse_server, broadcast_message_sync, get_sse_server
 from .utils.spam_filter import enable_spam_filter
@@ -74,6 +74,9 @@ def _get_oauth_token() -> str:
             token = get_valid_token(client_id, client_secret)
             logger.debug("Got token via auto-refresh")
             return token
+        except TokenExpiredError as e:
+            logger.error(f"Token expired: {e}")
+            logger.error("Run: cd mcp-servers/obs-twitch-mcp && source setenv.sh && uv run python auth.py")
         except Exception as e:
             logger.error(f"Token auto-refresh failed: {e}")
     elif client_id and not client_secret:

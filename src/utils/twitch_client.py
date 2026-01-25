@@ -601,3 +601,133 @@ class TwitchClient:
                 "type": v["type"],
             }
         return None
+
+    def create_poll(
+        self,
+        title: str,
+        choices: list[str],
+        duration: int = 60,
+        channel_points_voting_enabled: bool = False,
+        channel_points_per_vote: int = 0,
+    ) -> dict:
+        """
+        Create a poll on the channel.
+
+        Args:
+            title: Poll question (max 60 chars)
+            choices: List of choices (2-5 options, max 25 chars each)
+            duration: Duration in seconds (15-1800, default 60)
+            channel_points_voting_enabled: Allow channel points voting
+            channel_points_per_vote: Points cost per extra vote
+
+        Returns:
+            Poll details including ID and status
+        """
+        if len(choices) < 2 or len(choices) > 5:
+            raise ValueError("Poll must have 2-5 choices")
+
+        payload = {
+            "broadcaster_id": self.user_id,
+            "title": title[:60],
+            "choices": [{"title": c[:25]} for c in choices],
+            "duration": max(15, min(1800, duration)),
+        }
+
+        if channel_points_voting_enabled:
+            payload["channel_points_voting_enabled"] = True
+            payload["channel_points_per_vote"] = channel_points_per_vote
+
+        resp = self._api_call(
+            "post",
+            "https://api.twitch.tv/helix/polls",
+            json=payload,
+        )
+
+        if resp.status_code >= 400:
+            raise ValueError(f"Poll creation failed: {resp.status_code} - {resp.text}")
+
+        data = resp.json()
+        if data.get("data"):
+            poll = data["data"][0]
+            return {
+                "id": poll["id"],
+                "title": poll["title"],
+                "choices": [
+                    {"id": c["id"], "title": c["title"], "votes": c.get("votes", 0)}
+                    for c in poll["choices"]
+                ],
+                "status": poll["status"],
+                "duration": poll["duration"],
+                "started_at": poll["started_at"],
+            }
+        raise ValueError("Poll creation failed: no data returned")
+
+    def end_poll(self, poll_id: str, archive: bool = True) -> dict:
+        """
+        End a poll early.
+
+        Args:
+            poll_id: The poll ID to end
+            archive: If True, show final results. If False, cancel without showing results.
+
+        Returns:
+            Final poll results
+        """
+        status = "ARCHIVED" if archive else "TERMINATED"
+
+        resp = self._api_call(
+            "patch",
+            "https://api.twitch.tv/helix/polls",
+            json={
+                "broadcaster_id": self.user_id,
+                "id": poll_id,
+                "status": status,
+            },
+        )
+
+        if resp.status_code >= 400:
+            raise ValueError(f"End poll failed: {resp.status_code} - {resp.text}")
+
+        data = resp.json()
+        if data.get("data"):
+            poll = data["data"][0]
+            return {
+                "id": poll["id"],
+                "title": poll["title"],
+                "choices": [
+                    {"title": c["title"], "votes": c.get("votes", 0)}
+                    for c in poll["choices"]
+                ],
+                "status": poll["status"],
+                "total_votes": sum(c.get("votes", 0) for c in poll["choices"]),
+            }
+        raise ValueError("End poll failed: no data returned")
+
+    def get_polls(self) -> list[dict]:
+        """
+        Get active/recent polls for the channel.
+
+        Returns:
+            List of polls with their current status and results
+        """
+        resp = self._api_call(
+            "get",
+            f"https://api.twitch.tv/helix/polls?broadcaster_id={self.user_id}",
+        )
+
+        data = resp.json()
+        return [
+            {
+                "id": p["id"],
+                "title": p["title"],
+                "choices": [
+                    {"title": c["title"], "votes": c.get("votes", 0)}
+                    for c in p["choices"]
+                ],
+                "status": p["status"],
+                "total_votes": sum(c.get("votes", 0) for c in p["choices"]),
+                "started_at": p["started_at"],
+                "ended_at": p.get("ended_at"),
+            }
+            for p in data.get("data", [])
+        ]

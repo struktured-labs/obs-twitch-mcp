@@ -176,11 +176,17 @@ def authenticate(client_id: str, scopes: list[str] | None = None) -> str:
     return token_data["access_token"]
 
 
+class TokenExpiredError(Exception):
+    """Raised when token is expired and cannot be refreshed automatically."""
+    pass
+
+
 def get_valid_token(client_id: str, client_secret: str = "", scopes: list[str] | None = None) -> str:
     """
-    Get a valid access token, refreshing or re-authenticating if needed.
+    Get a valid access token, refreshing if possible.
 
-    This is the main function to use from other code.
+    Raises TokenExpiredError if the token is expired and cannot be refreshed.
+    This prevents blocking the MCP server - user must run auth.py manually.
     """
     existing = load_token()
 
@@ -200,11 +206,16 @@ def get_valid_token(client_id: str, client_secret: str = "", scopes: list[str] |
                 return new_token["access_token"]
             except Exception as e:
                 logger.error(f"Token refresh failed: {e}")
+                raise TokenExpiredError(
+                    f"Token refresh failed: {e}. Run 'uv run python auth.py' to re-authenticate."
+                )
         elif existing.get("refresh_token") and not client_secret:
             logger.warning("Have refresh_token but no client_secret - cannot refresh automatically")
 
-    # Need full re-auth
-    return authenticate(client_id, scopes)
+    # No valid token and can't refresh - don't block with interactive auth!
+    raise TokenExpiredError(
+        "No valid token available. Run 'uv run python auth.py' to authenticate."
+    )
 
 
 if __name__ == "__main__":
