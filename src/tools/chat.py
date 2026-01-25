@@ -2,10 +2,22 @@
 Twitch chat interaction tools.
 """
 
+import os
+import threading
 from datetime import datetime
 
 from ..app import mcp, get_twitch_client, refresh_twitch_client, get_chat_listener
 from ..utils import chat_logger
+from ..utils.twitch_auth import get_device_code, poll_for_token, save_token, validate_token
+
+# Track ongoing reauth state
+_reauth_state = {
+    "in_progress": False,
+    "url": None,
+    "code": None,
+    "status": None,
+    "error": None,
+}
 
 
 @mcp.tool()
@@ -195,3 +207,138 @@ def twitch_get_polls() -> list[dict]:
     """
     client = get_twitch_client()
     return client.get_polls()
+
+
+def _run_reauth_flow(client_id: str, device_code: str, interval: int, expires_in: int):
+    """Background thread to poll for token after user authorizes."""
+    global _reauth_state
+
+    scopes = [
+        "chat:edit",
+        "chat:read",
+        "channel:manage:broadcast",
+        "channel:manage:raids",
+        "channel:manage:videos",
+        "channel:manage:polls",
+        "moderator:manage:banned_users",
+        "moderator:manage:chat_messages",
+        "moderator:manage:shoutouts",
+        "clips:edit",
+    ]
+
+    try:
+        token_data = poll_for_token(client_id, scopes, device_code, interval, expires_in)
+        save_token(token_data)
+
+        # Validate to get username
+        validation = validate_token(token_data["access_token"])
+        username = validation.get("login", "unknown") if validation else "unknown"
+
+        # Refresh the client with new token
+        refresh_twitch_client()
+
+        _reauth_state["status"] = f"success - authenticated as {username}"
+        _reauth_state["in_progress"] = False
+
+    except TimeoutError:
+        _reauth_state["status"] = "expired - user did not authorize in time"
+        _reauth_state["error"] = "timeout"
+        _reauth_state["in_progress"] = False
+    except Exception as e:
+        _reauth_state["status"] = f"failed - {e}"
+        _reauth_state["error"] = str(e)
+        _reauth_state["in_progress"] = False
+
+
+@mcp.tool()
+def twitch_reauth() -> dict:
+    """
+    Start Twitch re-authentication flow.
+
+    Returns a URL and code - visit the URL and enter the code to authorize.
+    The authorization happens in the background. Call twitch_reauth_status()
+    to check if it completed.
+
+    Returns:
+        Dict with url, code, and instructions
+    """
+    global _reauth_state
+
+    # Check if already in progress
+    if _reauth_state["in_progress"]:
+        return {
+            "status": "already_in_progress",
+            "url": _reauth_state["url"],
+            "code": _reauth_state["code"],
+            "message": "Auth flow already running. Visit URL and enter code, or call twitch_reauth_status()",
+        }
+
+    client_id = os.getenv("TWITCH_CLIENT_ID", "")
+    if not client_id:
+        return {"error": "TWITCH_CLIENT_ID not set"}
+
+    scopes = [
+        "chat:edit",
+        "chat:read",
+        "channel:manage:broadcast",
+        "channel:manage:raids",
+        "channel:manage:videos",
+        "channel:manage:polls",
+        "moderator:manage:banned_users",
+        "moderator:manage:chat_messages",
+        "moderator:manage:shoutouts",
+        "clips:edit",
+    ]
+
+    try:
+        device_data = get_device_code(client_id, scopes)
+
+        _reauth_state["in_progress"] = True
+        _reauth_state["url"] = device_data["verification_uri"]
+        _reauth_state["code"] = device_data["user_code"]
+        _reauth_state["status"] = "waiting_for_authorization"
+        _reauth_state["error"] = None
+
+        # Start background polling
+        thread = threading.Thread(
+            target=_run_reauth_flow,
+            args=(
+                client_id,
+                device_data["device_code"],
+                device_data.get("interval", 5),
+                device_data["expires_in"],
+            ),
+            daemon=True,
+        )
+        thread.start()
+
+        return {
+            "status": "started",
+            "url": device_data["verification_uri"],
+            "code": device_data["user_code"],
+            "expires_in": device_data["expires_in"],
+            "message": f"Go to {device_data['verification_uri']} and enter code: {device_data['user_code']}",
+        }
+
+    except Exception as e:
+        return {"error": f"Failed to start auth flow: {e}"}
+
+
+@mcp.tool()
+def twitch_reauth_status() -> dict:
+    """
+    Check status of ongoing re-authentication.
+
+    Returns:
+        Dict with current status (waiting, success, failed, expired)
+    """
+    if not _reauth_state["in_progress"] and not _reauth_state["status"]:
+        return {"status": "not_started", "message": "No auth flow in progress. Call twitch_reauth() to start."}
+
+    return {
+        "in_progress": _reauth_state["in_progress"],
+        "status": _reauth_state["status"],
+        "url": _reauth_state["url"],
+        "code": _reauth_state["code"],
+        "error": _reauth_state["error"],
+    }
