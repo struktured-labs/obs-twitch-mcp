@@ -68,39 +68,53 @@ def _get_oauth_token() -> str:
     client_id = os.getenv("TWITCH_CLIENT_ID", "")
     client_secret = os.getenv("TWITCH_CLIENT_SECRET", "")
 
+    # Try auto-refresh first (preferred path)
     if client_id and client_secret:
         try:
-            # Use auto-refresh logic
             token = get_valid_token(client_id, client_secret)
-            logger.debug("Got token via auto-refresh")
+            logger.debug("Got valid token via auto-refresh")
             return token
         except TokenExpiredError as e:
-            logger.error(f"Token expired: {e}")
-            logger.error("Run: cd mcp-servers/obs-twitch-mcp && source setenv.sh && uv run python auth.py")
+            # Token is expired AND refresh failed - don't use stale tokens!
+            logger.error(f"Token expired and refresh failed: {e}")
+            logger.error("Run: cd mcp-servers/obs-twitch-mcp && uv run python auth.py")
+            # Return empty - caller will see the error
+            return ""
         except Exception as e:
             logger.error(f"Token auto-refresh failed: {e}")
-    elif client_id and not client_secret:
-        logger.warning("TWITCH_CLIENT_SECRET not set - token auto-refresh disabled")
+            # Don't fall back to stale tokens - they're known bad
+            return ""
 
-    # Fallback: read from file without refresh
+    # No client_secret - can't auto-refresh, warn about it
+    if client_id and not client_secret:
+        logger.warning("TWITCH_CLIENT_SECRET not set - token auto-refresh DISABLED")
+        logger.warning("Set TWITCH_CLIENT_SECRET in setenv.sh for auto-refresh")
+
+    # Try token file (only if we couldn't auto-refresh due to missing credentials)
     if TOKEN_FILE.exists():
         try:
             with open(TOKEN_FILE) as f:
                 data = json.load(f)
                 token = data.get("access_token", "")
                 if token:
-                    logger.info("Using token from file (may be expired)")
-                    return token
+                    # Validate it before using
+                    from .utils.twitch_auth import validate_token
+                    if validate_token(token):
+                        logger.info("Using validated token from file")
+                        return token
+                    else:
+                        logger.warning("Token from file is invalid/expired")
         except Exception as e:
             logger.warning(f"Failed to read token file: {e}")
 
-    # Fall back to environment variable
+    # Last resort: environment variable
     env_token = os.getenv("TWITCH_OAUTH_TOKEN", "")
     if env_token:
-        logger.info("Using token from TWITCH_OAUTH_TOKEN env var")
-    else:
-        logger.error("No OAuth token available from any source")
-    return env_token
+        logger.info("Using token from TWITCH_OAUTH_TOKEN env var (may be stale)")
+        return env_token
+
+    logger.error("No OAuth token available - run: uv run python auth.py")
+    return ""
 
 
 def get_obs_client() -> OBSClient:
