@@ -8,7 +8,7 @@ from datetime import datetime
 
 from ..app import mcp, get_twitch_client, refresh_twitch_client, get_chat_listener
 from ..utils import chat_logger
-from ..utils.twitch_auth import get_device_code, poll_for_token, save_token, validate_token
+from ..utils.twitch_auth import get_device_code, poll_for_token, save_token, validate_token, get_valid_token, TokenExpiredError
 
 # Track ongoing reauth state
 _reauth_state = {
@@ -108,16 +108,39 @@ def twitch_list_chat_log_dates() -> list[str]:
 @mcp.tool()
 def twitch_refresh_token() -> dict:
     """
-    Refresh the Twitch client to pick up a new token.
+    Refresh the Twitch OAuth token and reconnect.
 
-    Call this after running auth.py to update the token without restarting.
+    This actually calls Twitch's OAuth endpoint to refresh the access token
+    using the refresh_token, then restarts the client with the new token.
+
+    Use this when API calls fail with 401 Unauthorized.
     """
-    client = refresh_twitch_client()
-    return {
-        "status": "refreshed",
-        "channel": client.channel,
-        "message": "Twitch client and chat listener restarted with fresh token",
-    }
+    client_id = os.getenv("TWITCH_CLIENT_ID", "")
+    client_secret = os.getenv("TWITCH_CLIENT_SECRET", "")
+
+    if not client_id or not client_secret:
+        return {
+            "status": "error",
+            "message": "TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET required for token refresh",
+        }
+
+    try:
+        # Actually refresh the token via Twitch OAuth API
+        new_token = get_valid_token(client_id, client_secret)
+
+        # Now reload the client with the fresh token
+        client = refresh_twitch_client()
+
+        return {
+            "status": "refreshed",
+            "channel": client.channel,
+            "message": "Token refreshed via Twitch OAuth and client restarted",
+        }
+    except TokenExpiredError as e:
+        return {
+            "status": "error",
+            "message": f"Token refresh failed - run 'uv run python auth.py' manually: {e}",
+        }
 
 
 @mcp.tool()

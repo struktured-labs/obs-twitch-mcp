@@ -163,14 +163,27 @@ class OBSClient:
         x: float | None = None,
         y: float | None = None,
         alignment: int = 0,
+        **kwargs,
     ) -> None:
-        """Set position of a scene item."""
+        """Set transform of a scene item (position, bounds, scale, rotation, etc.).
+
+        Additional OBS transform properties can be passed as kwargs:
+            boundsType: "OBS_BOUNDS_STRETCH", "OBS_BOUNDS_SCALE_INNER", etc.
+            boundsWidth, boundsHeight: bounds dimensions
+            scaleX, scaleY: scale factors
+            rotation: rotation in degrees
+        """
         transform = {"alignment": alignment}
         if x is not None:
             transform["positionX"] = x
         if y is not None:
             transform["positionY"] = y
+        transform.update(kwargs)
         self.client.set_scene_item_transform(scene_name, item_id, transform)
+
+    def set_scene_item_index(self, scene_name: str, item_id: int, index: int) -> None:
+        """Set the z-order index of a scene item (0 = bottom/behind everything)."""
+        self.client.set_scene_item_index(scene_name, item_id, index)
 
     def set_volume(self, source_name: str, volume_db: float) -> None:
         """Set volume of an audio source in dB."""
