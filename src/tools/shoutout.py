@@ -229,3 +229,131 @@ def clear_shoutout_clip() -> str:
         return "Shoutout clip removed"
     except Exception:
         return "No shoutout clip to remove"
+
+
+@mcp.tool()
+def deep_shoutout(username: str, show_clip: bool = True) -> dict:
+    """
+    Deep shoutout: gather profile data, send shoutout, return full summary.
+
+    This is the "talk about them" shoutout that:
+    1. Fetches full profile (bio, broadcaster type, panels)
+    2. Gets channel info (current/recent game, title)
+    3. Gets recent clips
+    4. Sends personalized chat message
+    5. Shows clip on stream (optional)
+    6. Returns ALL gathered data so Claude can discuss the streamer
+
+    Use this when you want to give someone a proper shoutout AND
+    tell the user about who they are.
+
+    Args:
+        username: Twitch username to shoutout
+        show_clip: Whether to show their clip on stream (default: True)
+
+    Returns:
+        Dict with profile, channel_info, clips, and shoutout_result
+    """
+    twitch = get_twitch_client()
+
+    # Gather all data
+    profile = twitch.get_user_profile(username)
+    channel_info = twitch.get_channel_info(username)
+    clips = twitch.get_user_clips(username, count=5)
+
+    if not profile:
+        return {"error": f"User {username} not found"}
+
+    # Build personalized chat message
+    message_parts = []
+
+    # Broadcaster type badge
+    btype = profile.get("broadcaster_type", "")
+    if btype == "partner":
+        message_parts.append(f"«claude» Big shoutout to verified partner @{profile['display_name']}!")
+    elif btype == "affiliate":
+        message_parts.append(f"«claude» Shoutout to affiliate @{profile['display_name']}!")
+    else:
+        message_parts.append(f"«claude» Shoutout to @{profile['display_name']}!")
+
+    # What they stream
+    if channel_info and channel_info.get("game_name"):
+        message_parts.append(f"They stream {channel_info['game_name']}.")
+
+    # Bio snippet (first sentence if available)
+    bio = profile.get("description", "")
+    if bio:
+        first_sentence = bio.split(".")[0].strip()
+        if len(first_sentence) < 100:
+            message_parts.append(first_sentence + ".")
+
+    message_parts.append(f"https://twitch.tv/{username}")
+
+    # Send chat message
+    chat_message = " ".join(message_parts)
+    twitch.send_chat_message(chat_message)
+
+    # Official Twitch shoutout
+    try:
+        twitch.shoutout(username)
+    except Exception:
+        pass
+
+    # Show clip if requested
+    clip_shown = None
+    if show_clip and clips:
+        clip = clips[0]
+        try:
+            obs = get_obs_client()
+            scene = obs.get_current_scene()
+            embed_url = f"{clip['embed_url']}&parent=localhost&autoplay=true&muted=false"
+
+            try:
+                obs.set_input_settings("shoutout-clip", {"url": embed_url})
+                item_id = obs.client.get_scene_item_id(scene, "shoutout-clip").scene_item_id
+                obs.set_scene_item_enabled(scene, item_id, True)
+            except Exception:
+                obs.create_browser_source(scene, "shoutout-clip", embed_url, 640, 360)
+                item_id = obs.client.get_scene_item_id(scene, "shoutout-clip").scene_item_id
+                obs.set_scene_item_transform(scene, item_id, 1600, 100, alignment=9)
+
+            clip_shown = clip["title"]
+
+            # Auto-hide after 15 seconds
+            async def hide_clip():
+                await asyncio.sleep(15)
+                try:
+                    item_id = obs.client.get_scene_item_id(scene, "shoutout-clip").scene_item_id
+                    obs.set_scene_item_enabled(scene, item_id, False)
+                except Exception:
+                    pass
+
+            asyncio.create_task(hide_clip())
+        except Exception:
+            pass
+
+    # Return full summary for Claude to discuss
+    return {
+        "shoutout_sent": True,
+        "chat_message": chat_message,
+        "clip_shown": clip_shown,
+        "profile": {
+            "username": profile["login"],
+            "display_name": profile["display_name"],
+            "bio": profile.get("description", ""),
+            "broadcaster_type": profile.get("broadcaster_type") or "user",
+            "view_count": profile.get("view_count", 0),
+            "created_at": profile.get("created_at", ""),
+            "profile_image": profile.get("profile_image_url", ""),
+            "panels": profile.get("panels", []),
+        },
+        "channel_info": {
+            "game": channel_info.get("game_name", "") if channel_info else "",
+            "title": channel_info.get("title", "") if channel_info else "",
+            "language": channel_info.get("broadcaster_language", "") if channel_info else "",
+        } if channel_info else None,
+        "recent_clips": [
+            {"title": c["title"], "view_count": c["view_count"], "created_at": c["created_at"]}
+            for c in (clips or [])[:5]
+        ],
+    }
