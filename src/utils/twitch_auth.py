@@ -70,6 +70,7 @@ def poll_for_token(client_id: str, scopes: list[str], device_code: str, interval
 def save_token(token_data: dict) -> None:
     """Save token to file."""
     token_data["saved_at"] = time.time()
+    token_data["expires_at"] = time.time() + token_data.get("expires_in", 0)
     with open(TOKEN_FILE, "w") as f:
         json.dump(token_data, f, indent=2)
     logger.info(f"Token saved to {TOKEN_FILE}")

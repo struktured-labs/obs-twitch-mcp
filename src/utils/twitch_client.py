@@ -43,6 +43,23 @@ class TwitchClient:
     # Profile cache: {username: {"data": {profile}, "cached_at": timestamp}}
     _profile_cache: dict[str, dict] = field(default_factory=dict)
     _profile_cache_max_size: int = 20
+    _token_expires_at: float = 0.0
+
+    def __post_init__(self) -> None:
+        """Initialize token expiry from saved token file."""
+        token_data = load_token()
+        if token_data:
+            if "expires_at" in token_data:
+                self._token_expires_at = token_data["expires_at"]
+            elif "saved_at" in token_data and "expires_in" in token_data:
+                self._token_expires_at = token_data["saved_at"] + token_data["expires_in"]
+            logger.debug(f"Token expires at {self._token_expires_at} (in {self._token_expires_at - time.time():.0f}s)")
+
+    def _is_token_expiring(self, buffer_seconds: int = 300) -> bool:
+        """Check if the token is within buffer_seconds of expiry."""
+        if self._token_expires_at <= 0:
+            return False  # Unknown expiry, don't preemptively refresh
+        return time.time() >= (self._token_expires_at - buffer_seconds)
 
     def _refresh_token(self) -> bool:
         """Refresh the OAuth token. Returns True if successful."""
@@ -59,15 +76,21 @@ class TwitchClient:
             )
             save_token(new_token)
             self.oauth_token = new_token["access_token"]
+            self._token_expires_at = time.time() + new_token.get("expires_in", 0)
             self._user_id = None  # Reset cached user ID
-            logger.info("Token auto-refreshed successfully")
+            logger.info(f"Token auto-refreshed successfully (expires in {new_token.get('expires_in', 0)}s)")
             return True
         except Exception as e:
             logger.error(f"Token refresh failed: {e}")
             return False
 
     def _api_call(self, method: str, url: str, **kwargs) -> httpx.Response:
-        """Make an API call with auto-retry on 401 and exponential backoff."""
+        """Make an API call with proactive token refresh and auto-retry on 401."""
+        # Proactively refresh token if near expiry (within 5 minutes)
+        if self._is_token_expiring():
+            logger.info("Token expiring soon, proactively refreshing...")
+            self._refresh_token()
+
         # Extract extra headers once (don't pop on each iteration)
         extra_headers = kwargs.pop("headers", {})
         # Don't allow timeout to be overridden via kwargs
