@@ -228,8 +228,10 @@ def twitch_reauth() -> dict:
     """
     Refresh Twitch token and reconnect automatically.
 
-    Uses the saved refresh_token to get a new access token without any
-    manual intervention. This is the preferred way to fix auth issues.
+    Uses get_valid_token which will:
+    1. Return existing token if still valid
+    2. Refresh via refresh_token if expired
+    3. Raise error only if refresh_token itself is invalid
 
     Use this when:
     - Chat messages aren't sending
@@ -239,7 +241,7 @@ def twitch_reauth() -> dict:
     Returns:
         Dict with status, channel, user info, and token expiry
     """
-    from ..utils.twitch_auth import refresh_token, load_token, validate_token
+    from ..utils.twitch_auth import validate_token
 
     client_id = os.getenv("TWITCH_CLIENT_ID", "")
     client_secret = os.getenv("TWITCH_CLIENT_SECRET", "")
@@ -250,23 +252,16 @@ def twitch_reauth() -> dict:
             "message": "TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET required",
         }
 
-    token_data = load_token()
-    if not token_data or not token_data.get("refresh_token"):
-        return {
-            "status": "error",
-            "message": "No refresh_token found. Run 'uv run python auth.py' for initial setup.",
-        }
-
     try:
-        # Refresh token via Twitch OAuth API
-        new_token = refresh_token(client_id, client_secret, token_data["refresh_token"])
-        save_token(new_token)
+        # Use get_valid_token - same as auth.py does
+        # This validates first, then refreshes only if needed
+        new_token = get_valid_token(client_id, client_secret)
 
         # Reconnect client with new token
         client = refresh_twitch_client()
 
         # Validate and get info
-        validation = validate_token(new_token["access_token"])
+        validation = validate_token(new_token)
         if validation:
             expires_hours = validation.get("expires_in", 0) // 3600
             return {
@@ -283,10 +278,15 @@ def twitch_reauth() -> dict:
                 "message": "Token refreshed but validation failed - may still work",
             }
 
+    except TokenExpiredError as e:
+        return {
+            "status": "error",
+            "message": str(e),
+        }
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Refresh failed: {e}. Run 'uv run python auth.py' if refresh_token is invalid.",
+            "message": f"Unexpected error: {e}",
         }
 
 
