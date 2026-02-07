@@ -171,6 +171,7 @@ def _create_sse_handler():
 
     def handler(msg):
         """Forward chat message to SSE server if it passes filters."""
+        logger.debug(f"SSE handler got message from {msg.username}: {msg.message[:50]}")
         # Convert ChatMessage to dict
         msg_dict = {
             "username": msg.username,
@@ -183,7 +184,10 @@ def _create_sse_handler():
         # Apply filters
         filtered = chat_filter.process(msg_dict)
         if filtered:
+            logger.debug(f"SSE handler broadcasting filtered message from {msg.username}")
             broadcast_message_sync(filtered)
+        else:
+            logger.debug(f"SSE handler: message from {msg.username} was filtered out")
 
     return handler
 

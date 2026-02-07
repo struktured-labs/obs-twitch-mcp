@@ -20,6 +20,7 @@ logger = get_logger("sse_server")
 # Global state
 _server: "SSEServer | None" = None
 _runner: web.AppRunner | None = None
+_sse_loop: asyncio.AbstractEventLoop | None = None
 
 
 @dataclass
@@ -163,22 +164,33 @@ async def broadcast_message(message: dict) -> None:
 
 
 def broadcast_message_sync(message: dict) -> None:
-    """Synchronous wrapper for broadcasting (for use from sync handlers)."""
-    if _server:
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.create_task(_server.broadcast_message(message))
-            else:
-                loop.run_until_complete(_server.broadcast_message(message))
-        except RuntimeError:
-            # No event loop, create one
-            asyncio.run(_server.broadcast_message(message))
+    """Synchronous wrapper for broadcasting (for use from sync handlers).
+
+    Uses run_coroutine_threadsafe to safely schedule the broadcast
+    on the SSE server's event loop from any thread (e.g., chat listener thread).
+    """
+    if not _server:
+        logger.warning("broadcast_message_sync: no SSE server")
+        return
+    if not _sse_loop:
+        logger.warning("broadcast_message_sync: no SSE event loop stored")
+        return
+    if not _sse_loop.is_running():
+        logger.warning("broadcast_message_sync: SSE event loop not running")
+        return
+
+    logger.debug(f"broadcast_message_sync: sending to {_server.client_count} clients: {message.get('username', '?')}")
+    future = asyncio.run_coroutine_threadsafe(_server.broadcast_message(message), _sse_loop)
+    # Check for exceptions (non-blocking)
+    try:
+        future.result(timeout=1.0)
+    except Exception as e:
+        logger.error(f"broadcast_message_sync failed: {e}")
 
 
 async def start_sse_server(port: int = 8765, host: str = "127.0.0.1") -> SSEServer:
     """Start the SSE server."""
-    global _server, _runner
+    global _server, _runner, _sse_loop
 
     if _server and _server._running:
         logger.info("SSE server already running")
@@ -218,6 +230,7 @@ async def start_sse_server(port: int = 8765, host: str = "127.0.0.1") -> SSEServ
     await site.start()
 
     _server._running = True
+    _sse_loop = asyncio.get_event_loop()
     logger.info(f"SSE server started on http://{host}:{port}")
     logger.info(f"  /events - SSE stream for chat overlay")
     logger.info(f"  /config - GET/POST overlay configuration")
