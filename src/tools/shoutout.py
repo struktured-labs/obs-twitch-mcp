@@ -353,7 +353,7 @@ def deep_shoutout(username: str, show_clip: bool = True) -> dict:
             "language": channel_info.get("broadcaster_language", "") if channel_info else "",
         } if channel_info else None,
         "recent_clips": [
-            {"title": c["title"], "view_count": c["view_count"], "created_at": c["created_at"]}
+            {"title": c.get("title", ""), "view_count": c.get("view_count", 0), "created_at": c.get("created_at", "")}
             for c in (clips or [])[:5]
         ],
     }
