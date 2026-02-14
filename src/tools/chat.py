@@ -3,11 +3,13 @@ Twitch chat interaction tools.
 """
 
 import os
+import subprocess
 from datetime import datetime
+from pathlib import Path
 
 from ..app import mcp, get_twitch_client, refresh_twitch_client, get_chat_listener
 from ..utils import chat_logger
-from ..utils.twitch_auth import save_token, get_valid_token, TokenExpiredError
+from ..utils.twitch_auth import save_token, load_token, get_valid_token, TokenExpiredError
 
 
 
@@ -278,16 +280,63 @@ def twitch_reauth() -> dict:
                 "message": "Token refreshed but validation failed - may still work",
             }
 
-    except TokenExpiredError as e:
-        return {
-            "status": "error",
-            "message": str(e),
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Unexpected error: {e}",
-        }
+    except (TokenExpiredError, Exception) as e:
+        # Fallback: run auth.py as subprocess (handles edge cases the in-process refresh misses)
+        auth_script = Path(__file__).parent.parent.parent / "auth.py"
+        if not auth_script.exists():
+            return {"status": "error", "message": str(e)}
+
+        try:
+            env = {**os.environ, "TWITCH_CLIENT_ID": client_id, "TWITCH_CLIENT_SECRET": client_secret}
+            result = subprocess.run(
+                ["uv", "run", "python", str(auth_script)],
+                cwd=str(auth_script.parent),
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode != 0:
+                return {
+                    "status": "error",
+                    "message": f"In-process refresh failed: {e}. auth.py fallback also failed: {result.stderr.strip()}",
+                }
+
+            # auth.py saved the new token to disk - load it and reconnect
+            token_data = load_token()
+            if not token_data:
+                return {"status": "error", "message": "auth.py succeeded but token file not found"}
+
+            new_token = token_data["access_token"]
+            client = refresh_twitch_client()
+
+            validation = validate_token(new_token)
+            if validation:
+                expires_hours = validation.get("expires_in", 0) // 3600
+                return {
+                    "status": "success",
+                    "method": "auth.py fallback",
+                    "channel": client.channel,
+                    "user": validation.get("login"),
+                    "token_expires_in": f"{expires_hours} hours",
+                    "scopes": validation.get("scopes", []),
+                }
+            return {
+                "status": "refreshed",
+                "method": "auth.py fallback",
+                "channel": client.channel,
+                "message": "Token refreshed via auth.py but validation failed - may still work",
+            }
+        except subprocess.TimeoutExpired:
+            return {
+                "status": "error",
+                "message": f"In-process refresh failed: {e}. auth.py fallback timed out (may need device code flow - run manually).",
+            }
+        except Exception as fallback_err:
+            return {
+                "status": "error",
+                "message": f"In-process refresh failed: {e}. auth.py fallback error: {fallback_err}",
+            }
 
 
 @mcp.tool()
