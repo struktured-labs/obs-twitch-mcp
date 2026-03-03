@@ -4,7 +4,18 @@ OBS Studio control tools.
 
 import base64
 
-from ..app import mcp, get_obs_client
+from ..app import mcp, get_obs_client, refresh_obs_client
+
+
+@mcp.tool()
+def obs_reconnect() -> dict:
+    """Reconnect to OBS WebSocket. Use when OBS tools fail with Broken pipe."""
+    try:
+        client = refresh_obs_client()
+        version = client.get_version()
+        return {"status": "reconnected", **version}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 @mcp.tool()

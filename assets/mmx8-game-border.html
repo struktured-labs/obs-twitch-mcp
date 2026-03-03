@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    width: 1431px;
+    height: 810px;
+    overflow: hidden;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .game-frame {
+    position: absolute;
+    top: 4px; left: 4px; right: 4px; bottom: 4px;
+    border: 3px solid #1a4a8a;
+    box-shadow:
+      inset 0 0 0 2px #0a0a2a,
+      inset 0 0 0 5px #4488cc,
+      0 0 15px rgba(0,180,255,0.35),
+      0 0 30px rgba(0,100,200,0.15);
+    animation: framePulse 4s ease-in-out infinite;
+  }
+
+  @keyframes framePulse {
+    0%, 100% {
+      box-shadow:
+        inset 0 0 0 2px #0a0a2a,
+        inset 0 0 0 5px #4488cc,
+        0 0 15px rgba(0,180,255,0.35),
+        0 0 30px rgba(0,100,200,0.15);
+    }
+    50% {
+      box-shadow:
+        inset 0 0 0 2px #0a0a2a,
+        inset 0 0 0 5px #66bbff,
+        0 0 25px rgba(0,200,255,0.5),
+        0 0 50px rgba(0,100,200,0.25);
+    }
+  }
+
+  /* Corner bolts */
+  .corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #00ccff;
+    background: #0a1a3a;
+    box-shadow: 0 0 6px rgba(0,204,255,0.4);
+    z-index: 5;
+  }
+
+  .corner-tl { top: -3px; left: -3px; }
+  .corner-tr { top: -3px; right: -3px; }
+  .corner-bl { bottom: -3px; left: -3px; }
+  .corner-br { bottom: -3px; right: -3px; }
+
+  /* Energy ticks along left edge */
+  .tick {
+    position: absolute;
+    width: 8px;
+    height: 3px;
+    background: #44ff44;
+    box-shadow: 0 0 5px rgba(68,255,68,0.5);
+    animation: tickPulse 2.5s ease-in-out infinite;
+  }
+
+  .tick.left { left: -4px; }
+  .tick.right { right: -4px; }
+
+  @keyframes tickPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* Top-left HUD label */
+  .hud-label {
+    position: absolute;
+    top: -1px;
+    left: 30px;
+    background: #0a1a3a;
+    border: 2px solid #4488cc;
+    border-top: none;
+    padding: 3px 12px;
+    z-index: 5;
+  }
+
+  .hud-text {
+    font-size: 7px;
+    color: #00ccff;
+    letter-spacing: 2px;
+    text-shadow: 0 0 6px rgba(0,204,255,0.4);
+  }
+
+  /* Bottom-right stage label */
+  .stage-label {
+    position: absolute;
+    bottom: -1px;
+    right: 30px;
+    background: #0a1a3a;
+    border: 2px solid #4488cc;
+    border-bottom: none;
+    padding: 3px 12px;
+    z-index: 5;
+  }
+
+  .stage-text {
+    font-size: 7px;
+    color: #88aacc;
+    letter-spacing: 2px;
+  }
+
+  /* Charge particles along border */
+  .charge {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    animation: chargeDrift 5s ease-in-out infinite;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @keyframes chargeDrift {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+    25% { opacity: 0.7; }
+    75% { opacity: 0.7; }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.2); }
+  }
+</style>
+</head>
+<body>
+
+<div class="game-frame">
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+
+  <div class="hud-label">
+    <span class="hud-text">GAME CAPTURE</span>
+  </div>
+
+  <div class="stage-label">
+    <span class="stage-text">16-BIT DEMAKE</span>
+  </div>
+</div>
+
+<script>
+const frame = document.querySelector('.game-frame');
+
+// Energy ticks along left and right edges
+for (let i = 0; i < 12; i++) {
+  const tickL = document.createElement('div');
+  tickL.className = 'tick left';
+  tickL.style.top = (40 + i * 62) + 'px';
+  tickL.style.animationDelay = (i * 0.12) + 's';
+  frame.appendChild(tickL);
+
+  const tickR = document.createElement('div');
+  tickR.className = 'tick right';
+  tickR.style.top = (40 + i * 62) + 'px';
+  tickR.style.animationDelay = (i * 0.12 + 0.5) + 's';
+  frame.appendChild(tickR);
+}
+
+// Charge particles drifting along borders
+const colors = ['#00ccff', '#4488cc', '#66bbff', '#00ffcc'];
+for (let i = 0; i < 30; i++) {
+  const p = document.createElement('div');
+  p.className = 'charge';
+  const c = colors[Math.floor(Math.random() * colors.length)];
+  p.style.background = c;
+  p.style.boxShadow = '0 0 5px ' + c;
+
+  // Place along edges
+  const edge = Math.floor(Math.random() * 4);
+  if (edge === 0) { p.style.left = (20 + Math.random() * 1390) + 'px'; p.style.top = '6px'; p.style.setProperty('--dx', '0px'); p.style.setProperty('--dy', '-20px'); }
+  else if (edge === 1) { p.style.left = (20 + Math.random() * 1390) + 'px'; p.style.bottom = '6px'; p.style.setProperty('--dx', '0px'); p.style.setProperty('--dy', '20px'); }
+  else if (edge === 2) { p.style.top = (20 + Math.random() * 770) + 'px'; p.style.left = '6px'; p.style.setProperty('--dx', '-20px'); p.style.setProperty('--dy', '0px'); }
+  else { p.style.top = (20 + Math.random() * 770) + 'px'; p.style.right = '6px'; p.style.setProperty('--dx', '20px'); p.style.setProperty('--dy', '0px'); }
+
+  p.style.animationDelay = (Math.random() * 5) + 's';
+  p.style.animationDuration = (3 + Math.random() * 4) + 's';
+  document.body.appendChild(p);
+}
+</script>
+
+</body>
+</html>

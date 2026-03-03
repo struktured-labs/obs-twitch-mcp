@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  /* Border frame - Mega Man blue/cyan theme */
+  .frame {
+    position: absolute;
+    top: 10px; left: 10px; right: 10px; bottom: 10px;
+    border: 4px solid #1a3a6a;
+    box-shadow:
+      inset 0 0 0 2px transparent,
+      inset 0 0 0 6px #4488cc,
+      0 0 20px rgba(68,136,204,0.3),
+      0 0 40px rgba(0,200,255,0.1);
+    animation: framePulse 3s ease-in-out infinite;
+  }
+
+  @keyframes framePulse {
+    0%, 100% { box-shadow: inset 0 0 0 2px transparent, inset 0 0 0 6px #4488cc, 0 0 20px rgba(68,136,204,0.3); }
+    50% { box-shadow: inset 0 0 0 2px transparent, inset 0 0 0 6px #66bbff, 0 0 40px rgba(68,136,204,0.5), 0 0 60px rgba(0,200,255,0.2); }
+  }
+
+  /* Top banner */
+  .top-banner {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    text-align: center;
+    background: rgba(0,10,30,0.85);
+    border: 3px solid #4488cc;
+    padding: 10px 30px;
+  }
+
+  .top-banner::before, .top-banner::after {
+    content: '';
+    position: absolute;
+    width: 10px; height: 10px;
+    border: 2px solid #00ccff;
+  }
+  .top-banner::before { top: -5px; left: -5px; border-right: none; border-bottom: none; }
+  .top-banner::after { bottom: -5px; right: -5px; border-left: none; border-top: none; }
+
+  .game-title {
+    font-size: 14px;
+    color: #00ccff;
+    letter-spacing: 3px;
+    text-shadow: 2px 2px 0 #003366, 0 0 10px rgba(0,204,255,0.5);
+  }
+
+  .game-subtitle {
+    font-size: 8px;
+    color: #88aacc;
+    letter-spacing: 4px;
+    margin-top: 6px;
+  }
+
+  /* Bottom info bar */
+  .bottom-bar {
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .info-chip {
+    font-size: 8px;
+    padding: 6px 12px;
+    border: 2px solid #336699;
+    background: rgba(0,10,30,0.8);
+    animation: chipGlow 2s ease-in-out infinite;
+  }
+
+  .info-chip:nth-child(1) { color: #00ccff; border-color: #00ccff; animation-delay: 0s; }
+  .info-chip:nth-child(2) { color: #44ff44; border-color: #44ff44; animation-delay: 0.3s; }
+  .info-chip:nth-child(3) { color: #ff8844; border-color: #ff8844; animation-delay: 0.6s; }
+
+  @keyframes chipGlow {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  /* X charge particles */
+  .charge-particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    animation: chargeFloat 4s ease-in-out infinite;
+    opacity: 0;
+  }
+
+  @keyframes chargeFloat {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    30% { opacity: 0.8; }
+    70% { opacity: 0.8; }
+    100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
+  }
+
+  /* Scan lines for retro feel */
+  .scanlines {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .brand {
+    position: absolute;
+    bottom: 50px;
+    right: 30px;
+    font-size: 7px;
+    color: #334466;
+    letter-spacing: 2px;
+    z-index: 10;
+  }
+
+  .brand a { color: #4488cc; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="frame"></div>
+<div class="scanlines"></div>
+
+<div class="top-banner">
+  <div class="game-title">MEGA MAN X8</div>
+  <div class="game-subtitle">16-BIT DEMAKE</div>
+</div>
+
+<div class="bottom-bar">
+  <div class="info-chip">[X] SNES DEMAKE</div>
+  <div class="info-chip">[LIVE] STRUKTURED</div>
+  <div class="info-chip">[AI] CLAUDE CODE</div>
+</div>
+
+<script>
+// Charge particles along the frame edges
+const colors = ['#00ccff', '#4488cc', '#66bbff', '#00ffcc', '#44aaff'];
+for (let i = 0; i < 40; i++) {
+  const p = document.createElement('div');
+  p.className = 'charge-particle';
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  p.style.background = color;
+  p.style.boxShadow = '0 0 6px ' + color;
+
+  // Place along edges
+  const edge = Math.floor(Math.random() * 4);
+  if (edge === 0) { p.style.left = Math.random() * 100 + '%'; p.style.bottom = '15px'; }
+  else if (edge === 1) { p.style.left = Math.random() * 100 + '%'; p.style.top = '15px'; }
+  else if (edge === 2) { p.style.top = Math.random() * 100 + '%'; p.style.left = '15px'; }
+  else { p.style.top = Math.random() * 100 + '%'; p.style.right = '15px'; }
+
+  p.style.animationDelay = Math.random() * 4 + 's';
+  p.style.animationDuration = (3 + Math.random() * 3) + 's';
+  document.body.appendChild(p);
+}
+</script>
+
+<div class="brand">
+  BUILT WITH CLAUDE CODE // <a href="https://github.com/struktured-labs/obs-twitch-mcp">OBS-TWITCH-MCP</a>
+</div>
+
+</body>
+</html>

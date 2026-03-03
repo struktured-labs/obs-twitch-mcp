@@ -129,6 +129,20 @@ def get_obs_client() -> OBSClient:
     return _obs_client
 
 
+def refresh_obs_client() -> OBSClient:
+    """Force reconnect OBS websocket client."""
+    global _obs_client
+    if _obs_client is not None:
+        try:
+            _obs_client._client.disconnect()
+        except Exception:
+            pass
+        _obs_client._client = None
+    else:
+        _obs_client = None
+    return get_obs_client()
+
+
 def get_twitch_client() -> TwitchClient:
     """Get or create Twitch client singleton."""
     global _twitch_client

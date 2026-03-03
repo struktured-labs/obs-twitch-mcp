@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    width: 620px;
+    height: 470px;
+    overflow: hidden;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .cam-frame {
+    position: absolute;
+    top: 5px; left: 5px; right: 5px; bottom: 30px;
+    border: 4px solid #1a4a8a;
+    box-shadow:
+      inset 0 0 0 2px #0a0a2a,
+      inset 0 0 0 5px #4488cc,
+      0 0 12px rgba(0,180,255,0.4);
+    animation: camPulse 3s ease-in-out infinite;
+  }
+
+  /* Corner bolts */
+  .cam-frame::before, .cam-frame::after {
+    content: '';
+    position: absolute;
+    width: 10px; height: 10px;
+    border: 2px solid #00ccff;
+    background: #0a1a3a;
+  }
+  .cam-frame::before { top: -5px; left: -5px; }
+  .cam-frame::after { top: -5px; right: -5px; }
+
+  .corner-bl, .corner-br {
+    position: absolute;
+    width: 10px; height: 10px;
+    border: 2px solid #00ccff;
+    background: #0a1a3a;
+  }
+  .corner-bl { bottom: 30px; left: 0px; }
+  .corner-br { bottom: 30px; right: 0px; }
+
+  @keyframes camPulse {
+    0%, 100% { box-shadow: inset 0 0 0 2px #0a0a2a, inset 0 0 0 5px #4488cc, 0 0 12px rgba(0,180,255,0.4); }
+    50% { box-shadow: inset 0 0 0 2px #0a0a2a, inset 0 0 0 5px #66bbff, 0 0 20px rgba(0,200,255,0.6); }
+  }
+
+  /* Name tag bar at bottom */
+  .name-bar {
+    position: absolute;
+    bottom: 2px;
+    left: 5px; right: 5px;
+    height: 24px;
+    background: linear-gradient(90deg, #0a1a3a, #1a3a6a, #0a1a3a);
+    border: 2px solid #4488cc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .name-text {
+    font-size: 9px;
+    color: #00ccff;
+    letter-spacing: 4px;
+    text-shadow: 0 0 8px rgba(0,204,255,0.5);
+  }
+
+  /* Energy ticks on left edge */
+  .energy-tick {
+    position: absolute;
+    left: -2px;
+    width: 8px;
+    height: 3px;
+    background: #44ff44;
+    box-shadow: 0 0 4px rgba(68,255,68,0.6);
+    animation: tickPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes tickPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cam-frame">
+  <div class="corner-bl"></div>
+  <div class="corner-br"></div>
+</div>
+
+<div class="name-bar">
+  <span class="name-text">STRUKTURED</span>
+</div>
+
+<script>
+// Energy ticks along left edge of frame
+for (let i = 0; i < 8; i++) {
+  const tick = document.createElement('div');
+  tick.className = 'energy-tick';
+  tick.style.top = (40 + i * 50) + 'px';
+  tick.style.animationDelay = (i * 0.15) + 's';
+  document.querySelector('.cam-frame').appendChild(tick);
+}
+</script>
+
+</body>
+</html>

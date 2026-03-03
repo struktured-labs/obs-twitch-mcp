@@ -288,18 +288,22 @@ def twitch_reauth() -> dict:
 
         try:
             env = {**os.environ, "TWITCH_CLIENT_ID": client_id, "TWITCH_CLIENT_SECRET": client_secret}
+            # auth.py now falls back to device code flow if refresh fails,
+            # which can take up to 5 minutes for user to authorize in browser
             result = subprocess.run(
                 ["uv", "run", "python", str(auth_script)],
                 cwd=str(auth_script.parent),
                 env=env,
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=300,
             )
             if result.returncode != 0:
+                # Check if device code flow output is in stderr (user needs to visit URL)
+                output = (result.stdout + result.stderr).strip()
                 return {
                     "status": "error",
-                    "message": f"In-process refresh failed: {e}. auth.py fallback also failed: {result.stderr.strip()}",
+                    "message": f"In-process refresh failed: {e}. auth.py fallback also failed:\n{output}",
                 }
 
             # auth.py saved the new token to disk - load it and reconnect
@@ -327,10 +331,22 @@ def twitch_reauth() -> dict:
                 "channel": client.channel,
                 "message": "Token refreshed via auth.py but validation failed - may still work",
             }
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as timeout_err:
+            # Device code flow timed out waiting for user - check if token was saved anyway
+            token_data = load_token()
+            if token_data:
+                validation = validate_token(token_data.get("access_token", ""))
+                if validation:
+                    client = refresh_twitch_client()
+                    return {
+                        "status": "success",
+                        "method": "device code flow (late)",
+                        "channel": client.channel,
+                        "user": validation.get("login"),
+                    }
             return {
                 "status": "error",
-                "message": f"In-process refresh failed: {e}. auth.py fallback timed out (may need device code flow - run manually).",
+                "message": f"In-process refresh failed: {e}. Device code flow timed out waiting for browser authorization.",
             }
         except Exception as fallback_err:
             return {

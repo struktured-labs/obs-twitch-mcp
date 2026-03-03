@@ -226,6 +226,64 @@
     margin-top: 8px;
   }
 
+  /* Birthday badge */
+  .birthday-badge {
+    position: absolute;
+    top: 50px;
+    right: 60px;
+    z-index: 20;
+    text-align: center;
+    animation: badgeBounce 2s ease-in-out infinite;
+  }
+
+  @keyframes badgeBounce {
+    0%, 100% { transform: rotate(-3deg) scale(1); }
+    50% { transform: rotate(3deg) scale(1.05); }
+  }
+
+  .birthday-cake {
+    font-size: 48px;
+    filter: drop-shadow(0 0 15px rgba(255,180,60,0.6));
+    margin-bottom: 8px;
+  }
+
+  .birthday-text {
+    font-size: 11px;
+    color: #ffcc44;
+    letter-spacing: 3px;
+    text-shadow: 2px 2px 0 #5a3a00, 0 0 15px rgba(255,200,60,0.5);
+    animation: birthdayGlow 1.5s ease-in-out infinite;
+  }
+
+  .birthday-subtext {
+    font-size: 8px;
+    color: #e8a8d8;
+    letter-spacing: 2px;
+    margin-top: 6px;
+    text-shadow: 1px 1px 0 #3a1a2a;
+  }
+
+  @keyframes birthdayGlow {
+    0%, 100% { color: #ffcc44; }
+    33% { color: #ff88aa; }
+    66% { color: #88ccff; }
+  }
+
+  /* Birthday confetti */
+  .confetti {
+    position: absolute;
+    font-size: 12px;
+    animation: confettiFall linear infinite;
+    opacity: 0;
+  }
+
+  @keyframes confettiFall {
+    0% { transform: translateY(-30px) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.9; }
+    90% { opacity: 0.9; }
+    100% { transform: translateY(1100px) rotate(1080deg); opacity: 0; }
+  }
+
   .brand {
     position: absolute;
     bottom: 40px;
@@ -305,6 +363,27 @@ for (let i = 0; i < 60; i++) {
     <div class="mana-text">STREAM STARTING SOON</div>
   </div>
 </div>
+
+<div class="birthday-badge">
+  <div class="birthday-cake">&#x1F382;</div>
+  <div class="birthday-text">BIRTHDAY STREAM</div>
+  <div class="birthday-subtext">+ LEVEL UP!</div>
+</div>
+
+<script>
+// Birthday confetti
+const confettiPieces = ['&#x1F389;', '&#x2B50;', '&#x1F388;', '&#x1F381;', '&#x2728;', '&#x1F386;'];
+for (let i = 0; i < 20; i++) {
+  const c = document.createElement('div');
+  c.className = 'confetti';
+  c.innerHTML = confettiPieces[Math.floor(Math.random() * confettiPieces.length)];
+  c.style.left = Math.random() * 100 + '%';
+  c.style.fontSize = (10 + Math.random() * 16) + 'px';
+  c.style.animationDuration = (6 + Math.random() * 10) + 's';
+  c.style.animationDelay = Math.random() * 8 + 's';
+  document.body.appendChild(c);
+}
+</script>
 
 <div class="brand">
   BUILT WITH CLAUDE CODE // <a href="https://github.com/struktured-labs/obs-twitch-mcp">OBS-TWITCH-MCP</a>

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    width: 740px;
+    height: 1200px;
+    overflow: hidden;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .panel {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px;
+  }
+
+  /* Weapon Select Display */
+  .weapon-select {
+    background: rgba(0,10,30,0.85);
+    border: 3px solid #1a4a8a;
+    padding: 14px;
+    position: relative;
+  }
+
+  .weapon-select::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ccff, transparent);
+  }
+
+  .ws-title {
+    font-size: 9px;
+    color: #00ccff;
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 8px rgba(0,204,255,0.4);
+  }
+
+  .weapon-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .weapon-slot {
+    aspect-ratio: 1;
+    border: 2px solid #1a3a6a;
+    background: rgba(0,20,50,0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px;
+    position: relative;
+    animation: slotPulse 3s ease-in-out infinite;
+  }
+
+  .weapon-slot:nth-child(1) { border-color: #00ccff; animation-delay: 0s; }
+  .weapon-slot:nth-child(2) { border-color: #ff4444; animation-delay: 0.2s; }
+  .weapon-slot:nth-child(3) { border-color: #44ff44; animation-delay: 0.4s; }
+  .weapon-slot:nth-child(4) { border-color: #ffaa00; animation-delay: 0.6s; }
+  .weapon-slot:nth-child(5) { border-color: #ff44ff; animation-delay: 0.8s; }
+  .weapon-slot:nth-child(6) { border-color: #44ffff; animation-delay: 1.0s; }
+  .weapon-slot:nth-child(7) { border-color: #ff8844; animation-delay: 1.2s; }
+  .weapon-slot:nth-child(8) { border-color: #8844ff; animation-delay: 1.4s; }
+
+  @keyframes slotPulse {
+    0%, 100% { box-shadow: inset 0 0 8px rgba(0,100,200,0.1); }
+    50% { box-shadow: inset 0 0 15px rgba(0,100,200,0.25); }
+  }
+
+  .weapon-icon {
+    font-size: 22px;
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+
+  .weapon-name {
+    font-size: 6px;
+    color: #88aacc;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  /* Boss Roster */
+  .boss-roster {
+    background: rgba(0,10,30,0.85);
+    border: 3px solid #1a4a8a;
+    padding: 14px;
+    flex: 1;
+    position: relative;
+  }
+
+  .boss-roster::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #ff4444, transparent);
+  }
+
+  .br-title {
+    font-size: 9px;
+    color: #ff6666;
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 8px rgba(255,100,100,0.4);
+  }
+
+  .boss-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .boss-entry {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-left: 3px solid;
+    background: rgba(0,20,50,0.4);
+    animation: bossGlow 4s ease-in-out infinite;
+  }
+
+  .boss-entry:nth-child(1) { border-color: #ff4444; animation-delay: 0s; }
+  .boss-entry:nth-child(2) { border-color: #44aaff; animation-delay: 0.5s; }
+  .boss-entry:nth-child(3) { border-color: #44ff44; animation-delay: 1.0s; }
+  .boss-entry:nth-child(4) { border-color: #ffaa44; animation-delay: 1.5s; }
+  .boss-entry:nth-child(5) { border-color: #ff44ff; animation-delay: 2.0s; }
+  .boss-entry:nth-child(6) { border-color: #44ffff; animation-delay: 2.5s; }
+  .boss-entry:nth-child(7) { border-color: #ff8844; animation-delay: 3.0s; }
+  .boss-entry:nth-child(8) { border-color: #8844ff; animation-delay: 3.5s; }
+
+  @keyframes bossGlow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .boss-icon { font-size: 16px; }
+
+  .boss-info {
+    flex: 1;
+  }
+
+  .boss-name {
+    font-size: 7px;
+    color: #e8d8c8;
+    letter-spacing: 1px;
+  }
+
+  .boss-stage {
+    font-size: 6px;
+    color: #5a7a9a;
+    margin-top: 2px;
+  }
+
+  .boss-status {
+    font-size: 7px;
+  }
+
+  .status-clear { color: #44ff44; }
+  .status-active { color: #ffaa00; animation: blink 1s step-end infinite; }
+  .status-locked { color: #555555; }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* Energy Meter */
+  .energy-section {
+    background: rgba(0,10,30,0.85);
+    border: 3px solid #1a4a8a;
+    padding: 14px;
+  }
+
+  .energy-section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #44ff44, transparent);
+  }
+
+  .energy-title {
+    font-size: 8px;
+    color: #44ff44;
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+  }
+
+  .energy-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .energy-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .energy-label {
+    font-size: 7px;
+    color: #88aacc;
+    width: 50px;
+    letter-spacing: 1px;
+  }
+
+  .energy-track {
+    flex: 1;
+    height: 12px;
+    background: #0a1a3a;
+    border: 2px solid #1a3a6a;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .energy-fill {
+    height: 100%;
+    position: absolute;
+    left: 0; top: 0;
+  }
+
+  .energy-fill.hp {
+    background: repeating-linear-gradient(90deg, #44cc44 0px, #44cc44 4px, #33aa33 4px, #33aa33 8px);
+    animation: hpPulse 5s ease-in-out infinite;
+  }
+
+  .energy-fill.wp {
+    background: repeating-linear-gradient(90deg, #4488ff 0px, #4488ff 4px, #3366cc 4px, #3366cc 8px);
+    animation: wpPulse 7s ease-in-out infinite;
+  }
+
+  .energy-fill.xp {
+    background: repeating-linear-gradient(90deg, #ffaa44 0px, #ffaa44 4px, #cc8833 4px, #cc8833 8px);
+    animation: xpPulse 10s linear infinite;
+  }
+
+  @keyframes hpPulse {
+    0%, 100% { width: 85%; }
+    30% { width: 70%; }
+    60% { width: 90%; }
+  }
+
+  @keyframes wpPulse {
+    0%, 100% { width: 60%; }
+    50% { width: 100%; }
+  }
+
+  @keyframes xpPulse {
+    0% { width: 10%; }
+    100% { width: 95%; }
+  }
+
+  .energy-val {
+    font-size: 7px;
+    color: #88aacc;
+    width: 40px;
+    text-align: right;
+  }
+
+  /* Info strip at bottom */
+  .info-strip {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .info-tag {
+    font-size: 6px;
+    padding: 4px 8px;
+    border: 1px solid #334466;
+    color: #5a7a9a;
+    background: rgba(0,10,30,0.6);
+  }
+
+  /* Charge particles */
+  .spark {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    animation: sparkDrift 5s ease-in-out infinite;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @keyframes sparkDrift {
+    0% { opacity: 0; transform: translateY(0); }
+    20% { opacity: 0.7; }
+    80% { opacity: 0.7; }
+    100% { opacity: 0; transform: translateY(-60px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <!-- Weapon Select -->
+  <div class="weapon-select">
+    <div class="ws-title">WEAPON SELECT</div>
+    <div class="weapon-grid">
+      <div class="weapon-slot">
+        <span class="weapon-icon" style="color:#00ccff">&#x2726;</span>
+        <span class="weapon-name">BUSTER</span>
+      </div>
+      <div class="weapon-slot">
+        <span class="weapon-icon" style="color:#ff4444">&#x2739;</span>
+        <span class="weapon-name">FLAME</span>
+      </div>
+      <div class="weapon-slot">
+        <span class="weapon-icon" style="color:#44ff44">&#x2743;</span>
+        <span class="weapon-name">BAMBOO</span>
+      </div>
+      <div class="weapon-slot">
+        <span class="weapon-icon" style="color:#ffaa00">&#x26A1;</span>
+        <span class="weapon-name">THUNDER</span>
+      </div>
+      <div class="weapon-slot">
+        <span class="weapon-icon" style="color:#ff44ff">&#x2744;</span>
+        <span class="weapon-name">ICE</span>
+      </div>
+      <div class="weapon-slot">
+        <span class="weapon-icon" style="color:#44ffff">&#x2606;</span>
+        <span class="weapon-name">GRAVITY</span>
+      </div>
+      <div class="weapon-slot">
+        <span class="weapon-icon" style="color:#ff8844">&#x2756;</span>
+        <span class="weapon-name">SQUEEZE</span>
+      </div>
+      <div class="weapon-slot">
+        <span class="weapon-icon" style="color:#8844ff">&#x2736;</span>
+        <span class="weapon-name">SHADOW</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boss Roster -->
+  <div class="boss-roster">
+    <div class="br-title">MAVERICK ROSTER</div>
+    <div class="boss-list">
+      <div class="boss-entry">
+        <span class="boss-icon">&#x1F525;</span>
+        <div class="boss-info">
+          <div class="boss-name">BURN ROOSTER</div>
+          <div class="boss-stage">Inferno Stage</div>
+        </div>
+        <span class="boss-status status-clear">CLEAR</span>
+      </div>
+      <div class="boss-entry">
+        <span class="boss-icon">&#x1F33F;</span>
+        <div class="boss-info">
+          <div class="boss-name">BAMBOO PANDAMONIUM</div>
+          <div class="boss-stage">Jungle Stage</div>
+        </div>
+        <span class="boss-status status-clear">CLEAR</span>
+      </div>
+      <div class="boss-entry">
+        <span class="boss-icon">&#x26C4;</span>
+        <div class="boss-info">
+          <div class="boss-name">AVALANCHE YETI</div>
+          <div class="boss-stage">Arctic Stage</div>
+        </div>
+        <span class="boss-status status-active">> PLAY</span>
+      </div>
+      <div class="boss-entry">
+        <span class="boss-icon">&#x26A1;</span>
+        <div class="boss-info">
+          <div class="boss-name">GIGABOLT MAN-O-WAR</div>
+          <div class="boss-stage">Power Stage</div>
+        </div>
+        <span class="boss-status status-locked">LOCKED</span>
+      </div>
+      <div class="boss-entry">
+        <span class="boss-icon">&#x1F30A;</span>
+        <div class="boss-info">
+          <div class="boss-name">EARTHROCK TRILOBYTE</div>
+          <div class="boss-stage">Mine Stage</div>
+        </div>
+        <span class="boss-status status-locked">LOCKED</span>
+      </div>
+      <div class="boss-entry">
+        <span class="boss-icon">&#x1F33B;</span>
+        <div class="boss-info">
+          <div class="boss-name">OPTIC SUNFLOWER</div>
+          <div class="boss-stage">Cyber Stage</div>
+        </div>
+        <span class="boss-status status-locked">LOCKED</span>
+      </div>
+      <div class="boss-entry">
+        <span class="boss-icon">&#x1F577;</span>
+        <div class="boss-info">
+          <div class="boss-name">DARK MANTIS</div>
+          <div class="boss-stage">Stealth Stage</div>
+        </div>
+        <span class="boss-status status-locked">LOCKED</span>
+      </div>
+      <div class="boss-entry">
+        <span class="boss-icon">&#x1F98B;</span>
+        <div class="boss-info">
+          <div class="boss-name">GRAVITY ANTONION</div>
+          <div class="boss-stage">Lab Stage</div>
+        </div>
+        <span class="boss-status status-locked">LOCKED</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Energy Meters -->
+  <div class="energy-section">
+    <div class="energy-title">STATUS</div>
+    <div class="energy-bars">
+      <div class="energy-row">
+        <span class="energy-label">HP</span>
+        <div class="energy-track"><div class="energy-fill hp"></div></div>
+        <span class="energy-val">28/32</span>
+      </div>
+      <div class="energy-row">
+        <span class="energy-label">WP</span>
+        <div class="energy-track"><div class="energy-fill wp"></div></div>
+        <span class="energy-val">16/24</span>
+      </div>
+      <div class="energy-row">
+        <span class="energy-label">EXP</span>
+        <div class="energy-track"><div class="energy-fill xp"></div></div>
+        <span class="energy-val">LV.12</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-strip">
+    <span class="info-tag">LIVES: 4</span>
+    <span class="info-tag">METALS: 2,847</span>
+    <span class="info-tag">RANK: B</span>
+  </div>
+</div>
+
+<script>
+// Floating sparks
+const colors = ['#00ccff', '#44ff44', '#ffaa00', '#ff4444', '#8844ff'];
+for (let i = 0; i < 20; i++) {
+  const s = document.createElement('div');
+  s.className = 'spark';
+  s.style.left = Math.random() * 100 + '%';
+  s.style.top = (200 + Math.random() * 800) + 'px';
+  const c = colors[Math.floor(Math.random() * colors.length)];
+  s.style.background = c;
+  s.style.boxShadow = '0 0 4px ' + c;
+  s.style.animationDelay = Math.random() * 5 + 's';
+  s.style.animationDuration = (3 + Math.random() * 4) + 's';
+  document.body.appendChild(s);
+}
+</script>
+
+</body>
+</html>

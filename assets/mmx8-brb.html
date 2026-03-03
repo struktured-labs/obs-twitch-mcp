@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: rgba(2,8,16,0.92);
+    width: 370px;
+    height: 268px;
+    overflow: hidden;
+    font-family: 'Press Start 2P', monospace;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .brb-text {
+    font-size: 48px;
+    color: #00ccff;
+    letter-spacing: 10px;
+    text-shadow:
+      3px 3px 0 #003366,
+      0 0 20px rgba(0,204,255,0.5),
+      0 0 40px rgba(0,100,200,0.3);
+    animation: brbPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes brbPulse {
+    0%, 100% { text-shadow: 3px 3px 0 #003366, 0 0 20px rgba(0,204,255,0.5); }
+    50% { text-shadow: 3px 3px 0 #003366, 0 0 30px rgba(0,204,255,0.7), 0 0 50px rgba(0,100,200,0.4); }
+  }
+
+  .sub-text {
+    font-size: 10px;
+    color: #4488cc;
+    letter-spacing: 4px;
+    margin-top: 16px;
+    animation: subBlink 3s ease-in-out infinite;
+  }
+
+  @keyframes subBlink {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .charge {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    animation: spark 4s ease-in-out infinite;
+    opacity: 0;
+  }
+
+  @keyframes spark {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    30% { opacity: 0.6; }
+    70% { opacity: 0.5; }
+    100% { opacity: 0; transform: translateY(-50px) scale(1.2); }
+  }
+</style>
+</head>
+<body>
+
+<div class="brb-text">BRB</div>
+<div class="sub-text">RECHARGING...</div>
+
+<script>
+const colors = ['#00ccff', '#4488cc', '#66bbff'];
+for (let i = 0; i < 15; i++) {
+  const s = document.createElement('div');
+  s.className = 'charge';
+  const c = colors[Math.floor(Math.random() * colors.length)];
+  s.style.background = c;
+  s.style.boxShadow = '0 0 4px ' + c;
+  s.style.left = Math.random() * 100 + '%';
+  s.style.top = (100 + Math.random() * 150) + 'px';
+  s.style.animationDelay = Math.random() * 4 + 's';
+  s.style.animationDuration = (2 + Math.random() * 3) + 's';
+  document.body.appendChild(s);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #020810;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    font-family: 'Press Start 2P', monospace;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Deep blue tech background */
+  .bg-layer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background:
+      radial-gradient(ellipse at 50% 110%, rgba(0,60,120,0.25) 0%, transparent 50%),
+      radial-gradient(ellipse at 30% 20%, rgba(0,40,100,0.15) 0%, transparent 40%),
+      radial-gradient(ellipse at 70% 30%, rgba(0,100,180,0.1) 0%, transparent 35%);
+  }
+
+  /* Subtle grid pattern */
+  .grid-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background:
+      linear-gradient(rgba(0,80,160,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,80,160,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridScroll 20s linear infinite;
+  }
+
+  @keyframes gridScroll {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(40px, 40px); }
+  }
+
+  /* Scanlines */
+  .scanlines {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  /* Border frame */
+  .frame {
+    position: absolute;
+    top: 12px; left: 12px; right: 12px; bottom: 12px;
+    border: 3px solid #1a3a6a;
+    box-shadow:
+      inset 0 0 0 2px transparent,
+      inset 0 0 0 5px #4488cc,
+      0 0 20px rgba(68,136,204,0.25),
+      0 0 40px rgba(0,200,255,0.08);
+    animation: framePulse 4s ease-in-out infinite;
+  }
+
+  @keyframes framePulse {
+    0%, 100% { box-shadow: inset 0 0 0 2px transparent, inset 0 0 0 5px #4488cc, 0 0 20px rgba(68,136,204,0.25); }
+    50% { box-shadow: inset 0 0 0 2px transparent, inset 0 0 0 5px #66bbff, 0 0 35px rgba(68,136,204,0.4), 0 0 60px rgba(0,200,255,0.15); }
+  }
+
+  /* Corner bolts on frame */
+  .frame-corner {
+    position: absolute;
+    width: 12px; height: 12px;
+    border: 2px solid #00ccff;
+    background: #0a1a3a;
+    box-shadow: 0 0 6px rgba(0,204,255,0.4);
+  }
+  .fc-tl { top: -2px; left: -2px; }
+  .fc-tr { top: -2px; right: -2px; }
+  .fc-bl { bottom: -2px; left: -2px; }
+  .fc-br { bottom: -2px; right: -2px; }
+
+  .container {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+  }
+
+  /* X helmet icon */
+  .x-icon {
+    font-size: 56px;
+    margin-bottom: 24px;
+    animation: iconFloat 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(0,180,255,0.5));
+  }
+
+  /* Ultima avatar sprite */
+  .ultima-avatar {
+    position: absolute;
+    bottom: 100px;
+    left: 80px;
+    width: 128px;
+    height: 120px;
+    image-rendering: pixelated;
+    animation: iconFloat 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 15px rgba(212,165,36,0.6));
+    z-index: 10;
+  }
+
+  @keyframes iconFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .title {
+    font-size: 42px;
+    color: #00ccff;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    margin-bottom: 10px;
+    text-shadow:
+      3px 3px 0 #003366,
+      0 0 20px rgba(0,204,255,0.4),
+      0 0 40px rgba(0,100,200,0.2);
+  }
+
+  .subtitle {
+    font-size: 16px;
+    color: #4488cc;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    margin-bottom: 50px;
+    text-shadow: 2px 2px 0 #001a33;
+    animation: subGlow 3s ease-in-out infinite;
+  }
+
+  @keyframes subGlow {
+    0%, 100% { color: #4488cc; }
+    50% { color: #66bbff; text-shadow: 2px 2px 0 #001a33, 0 0 15px rgba(100,180,255,0.4); }
+  }
+
+  /* Session info */
+  .session-badge {
+    display: inline-block;
+    background: rgba(0,10,30,0.85);
+    border: 3px solid #1a4a8a;
+    padding: 14px 30px;
+    margin-bottom: 45px;
+    position: relative;
+  }
+
+  .session-badge::before, .session-badge::after {
+    content: '';
+    position: absolute;
+    width: 12px; height: 12px;
+    border: 2px solid #00ccff;
+  }
+  .session-badge::before { top: -6px; left: -6px; border-right: none; border-bottom: none; }
+  .session-badge::after { bottom: -6px; right: -6px; border-left: none; border-top: none; }
+
+  .session-text {
+    font-size: 12px;
+    color: #e8e8ff;
+    letter-spacing: 3px;
+  }
+
+  /* Feature chips */
+  .features {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 55px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 9px;
+    padding: 8px 16px;
+    border: 2px solid #1a3a6a;
+    background: rgba(0,10,30,0.7);
+    animation: featureFade 2.5s ease-in-out infinite;
+  }
+
+  .feature:nth-child(1) { border-color: #00ccff; color: #00ccff; animation-delay: 0s; }
+  .feature:nth-child(2) { border-color: #44ff44; color: #44ff44; animation-delay: 0.4s; }
+  .feature:nth-child(3) { border-color: #ff8844; color: #ff8844; animation-delay: 0.8s; }
+
+  @keyframes featureFade {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* Charge bar (loading) */
+  .charge-container {
+    width: 400px;
+    margin: 0 auto;
+  }
+
+  .charge-label {
+    font-size: 10px;
+    color: #00ccff;
+    margin-bottom: 8px;
+    text-align: left;
+    letter-spacing: 2px;
+  }
+
+  .charge-bar {
+    height: 20px;
+    background: #0a0a2a;
+    border: 3px solid #1a4a8a;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .charge-fill {
+    height: 100%;
+    background: repeating-linear-gradient(90deg, #0088cc 0px, #0088cc 6px, #0066aa 6px, #0066aa 12px);
+    animation: chargeLoad 5s ease-in-out infinite;
+    box-shadow: 0 0 10px rgba(0,136,204,0.4);
+  }
+
+  @keyframes chargeLoad {
+    0% { width: 0%; }
+    40% { width: 60%; }
+    70% { width: 85%; }
+    100% { width: 100%; }
+  }
+
+  .charge-text {
+    font-size: 9px;
+    color: #4488cc;
+    margin-top: 10px;
+    animation: textBlink 1.5s step-end infinite;
+  }
+
+  @keyframes textBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Charge particles */
+  .particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    animation: particleRise 5s ease-in-out infinite;
+    opacity: 0;
+  }
+
+  @keyframes particleRise {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    25% { opacity: 0.7; }
+    75% { opacity: 0.6; }
+    100% { opacity: 0; transform: translateY(-100px) scale(1.5); }
+  }
+
+  /* Bottom info */
+  .bottom-bar {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    z-index: 10;
+  }
+
+  .info-chip {
+    font-size: 8px;
+    padding: 6px 12px;
+    border: 2px solid #1a3a6a;
+    background: rgba(0,10,30,0.8);
+    animation: chipGlow 2.5s ease-in-out infinite;
+  }
+
+  .info-chip:nth-child(1) { color: #00ccff; border-color: #00ccff; animation-delay: 0s; }
+  .info-chip:nth-child(2) { color: #44ff44; border-color: #44ff44; animation-delay: 0.3s; }
+  .info-chip:nth-child(3) { color: #ff8844; border-color: #ff8844; animation-delay: 0.6s; }
+
+  @keyframes chipGlow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .brand {
+    position: absolute;
+    bottom: 55px;
+    right: 35px;
+    font-size: 7px;
+    color: #1a3a6a;
+    letter-spacing: 2px;
+    z-index: 10;
+  }
+
+  .brand a { color: #4488cc; text-decoration: none; }
+
+  /* Weapon energy ticks on frame edges */
+  .frame-tick {
+    position: absolute;
+    width: 6px;
+    height: 3px;
+    background: #44ff44;
+    box-shadow: 0 0 4px rgba(68,255,68,0.4);
+    animation: tickPulse 2.5s ease-in-out infinite;
+    z-index: 10;
+  }
+
+  .frame-tick.left { left: 15px; }
+  .frame-tick.right { right: 15px; }
+
+  @keyframes tickPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-layer"></div>
+<div class="grid-overlay"></div>
+<div class="scanlines"></div>
+
+<div class="frame">
+  <div class="frame-corner fc-tl"></div>
+  <div class="frame-corner fc-tr"></div>
+  <div class="frame-corner fc-bl"></div>
+  <div class="frame-corner fc-br"></div>
+</div>
+
+<div class="container">
+  <div class="x-icon">&#x2726;</div>
+
+  <div class="title">RETRO NIGHT</div>
+  <div class="subtitle">MMX8 DEMAKE + ULTIMA: RUINS OF VIRTUE</div>
+
+  <div class="session-badge">
+    <span class="session-text">POWERED BY CLAUDE CODE</span>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <span>[X]</span>
+      <span>MMX8 DEMAKE</span>
+    </div>
+    <div class="feature">
+      <span>[&#9765;]</span>
+      <span>ULTIMA: RUINS OF VIRTUE</span>
+    </div>
+    <div class="feature">
+      <span>[LIVE]</span>
+      <span>STRUKTURED</span>
+    </div>
+  </div>
+
+  <div class="charge-container">
+    <div class="charge-label">> LOADING ADVENTURE...</div>
+    <div class="charge-bar">
+      <div class="charge-fill"></div>
+    </div>
+    <div class="charge-text">STREAM STARTING SOON</div>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <div class="info-chip">[X] MMX8 + ULTIMA</div>
+  <div class="info-chip">[LIVE] STRUKTURED</div>
+  <div class="info-chip">[AI] CLAUDE CODE</div>
+</div>
+
+<img class="ultima-avatar" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAAAo0lEQVR4nLWSsQ4EIQhEn1Z+nqWfSMnn0XHFre7potnmSExknMFRSJzDf/YpIuSX4iifCrwiR3i+wNAegJntjiYH4S1dvBR5uPBl74CLiJ/yqMBKcMDNLMSHrhPMbKyDYHAvR2RVBUBVUVVKKcG37CNxd2HXuqM+HCQRQUQws7E6Boz8fw7W2MwD8B2kcXu3eyrysBBg01P6W2ut9I4BtNYA0gecxYg9oAdwgAAAAABJRU5ErkJggg==" alt="Ultima Avatar">
+
+<div class="brand">
+  BUILT WITH CLAUDE CODE // <a href="https://github.com/struktured-labs/obs-twitch-mcp">OBS-TWITCH-MCP</a>
+</div>
+
+<script>
+// Frame energy ticks
+const frame = document.querySelector('.frame');
+for (let i = 0; i < 16; i++) {
+  const tL = document.createElement('div');
+  tL.className = 'frame-tick left';
+  tL.style.top = (40 + i * 62) + 'px';
+  tL.style.animationDelay = (i * 0.1) + 's';
+  frame.appendChild(tL);
+
+  const tR = document.createElement('div');
+  tR.className = 'frame-tick right';
+  tR.style.top = (40 + i * 62) + 'px';
+  tR.style.animationDelay = (i * 0.1 + 0.5) + 's';
+  frame.appendChild(tR);
+}
+
+// Charge particles
+const colors = ['#00ccff', '#4488cc', '#66bbff', '#00ffcc', '#44aaff'];
+for (let i = 0; i < 50; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const c = colors[Math.floor(Math.random() * colors.length)];
+  p.style.background = c;
+  p.style.boxShadow = '0 0 6px ' + c;
+  p.style.left = Math.random() * 100 + '%';
+  p.style.top = (200 + Math.random() * 700) + 'px';
+  p.style.animationDelay = Math.random() * 5 + 's';
+  p.style.animationDuration = (3 + Math.random() * 4) + 's';
+  document.body.appendChild(p);
+}
+</script>
+
+</body>
+</html>

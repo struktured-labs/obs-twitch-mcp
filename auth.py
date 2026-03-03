@@ -31,7 +31,11 @@ def main():
     print("Twitch Authentication Helper")
     print("-" * 40)
 
-    token = get_valid_token(client_id, client_secret)
+    try:
+        token = get_valid_token(client_id, client_secret)
+    except Exception:
+        print("Refresh failed, starting device code flow...")
+        token = authenticate(client_id)
 
     print("\n" + "=" * 50)
     print("SUCCESS!")

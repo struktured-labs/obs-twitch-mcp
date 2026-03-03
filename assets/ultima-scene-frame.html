@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    font-family: 'MedievalSharp', cursive;
+  }
+
+  /* Stone/gold pulsing outer border */
+  .frame {
+    position: absolute;
+    top: 10px; left: 10px; right: 10px; bottom: 10px;
+    border: 4px solid #5a4a3a;
+    box-shadow:
+      inset 0 0 0 2px transparent,
+      inset 0 0 0 6px #d4a524,
+      0 0 20px rgba(212,165,36,0.3),
+      0 0 40px rgba(180,120,20,0.1);
+    animation: framePulse 3s ease-in-out infinite;
+  }
+
+  @keyframes framePulse {
+    0%, 100% { box-shadow: inset 0 0 0 2px transparent, inset 0 0 0 6px #d4a524, 0 0 20px rgba(212,165,36,0.3); }
+    50% { box-shadow: inset 0 0 0 2px transparent, inset 0 0 0 6px #f0c040, 0 0 40px rgba(240,192,64,0.5), 0 0 60px rgba(212,165,36,0.2); }
+  }
+
+  /* Top banner */
+  .top-banner {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    text-align: center;
+    background: rgba(26,20,14,0.9);
+    border: 3px solid #d4a524;
+    padding: 10px 30px;
+  }
+
+  .top-banner::before, .top-banner::after {
+    content: '\2625';
+    position: absolute;
+    font-size: 14px;
+    color: #d4a524;
+    text-shadow: 0 0 6px rgba(212,165,36,0.5);
+  }
+  .top-banner::before { top: -9px; left: -9px; }
+  .top-banner::after { bottom: -9px; right: -9px; }
+
+  .game-title {
+    font-size: 20px;
+    color: #d4a524;
+    letter-spacing: 6px;
+    text-shadow: 2px 2px 0 #3a2a1a, 0 0 10px rgba(212,165,36,0.5);
+  }
+
+  .game-subtitle {
+    font-size: 12px;
+    color: #c4a882;
+    letter-spacing: 4px;
+    margin-top: 6px;
+  }
+
+  /* Bottom info bar */
+  .bottom-bar {
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .info-chip {
+    font-size: 12px;
+    padding: 6px 14px;
+    border: 2px solid #5a4a3a;
+    background: rgba(26,20,14,0.85);
+    animation: chipGlow 2s ease-in-out infinite;
+  }
+
+  .info-chip:nth-child(1) { color: #d4a524; border-color: #d4a524; animation-delay: 0s; }
+  .info-chip:nth-child(2) { color: #44ff44; border-color: #44ff44; animation-delay: 0.3s; }
+  .info-chip:nth-child(3) { color: #ff9944; border-color: #ff9944; animation-delay: 0.6s; }
+
+  @keyframes chipGlow {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  /* Ember particles along edges */
+  .ember-particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    animation: emberFloat 4s ease-in-out infinite;
+    opacity: 0;
+  }
+
+  @keyframes emberFloat {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    30% { opacity: 0.8; }
+    70% { opacity: 0.6; }
+    100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
+  }
+
+  /* Warm scanlines */
+  .scanlines {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(26,20,14,0.03) 2px,
+      rgba(26,20,14,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .brand {
+    position: absolute;
+    bottom: 50px;
+    right: 30px;
+    font-size: 10px;
+    color: #5a4a3a;
+    letter-spacing: 2px;
+    z-index: 10;
+  }
+
+  .brand a { color: #d4a524; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="frame"></div>
+<div class="scanlines"></div>
+
+<div class="top-banner">
+  <div class="game-title">ULTIMA</div>
+  <div class="game-subtitle">RUNES OF VIRTUE</div>
+</div>
+
+<div class="bottom-bar">
+  <div class="info-chip">[&#9765;] RUNES OF VIRTUE</div>
+  <div class="info-chip">[LIVE] STRUKTURED</div>
+  <div class="info-chip">[AI] CLAUDE CODE</div>
+</div>
+
+<script>
+// Ember particles along the frame edges
+const colors = ['#d4a524', '#ff9944', '#f0c040', '#c4a882', '#e0b030'];
+for (let i = 0; i < 40; i++) {
+  const p = document.createElement('div');
+  p.className = 'ember-particle';
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  p.style.background = color;
+  p.style.boxShadow = '0 0 6px ' + color;
+
+  // Place along edges - embers float upward
+  const edge = Math.floor(Math.random() * 4);
+  if (edge === 0) { p.style.left = Math.random() * 100 + '%'; p.style.bottom = '15px'; }
+  else if (edge === 1) { p.style.left = Math.random() * 100 + '%'; p.style.top = '15px'; }
+  else if (edge === 2) { p.style.top = Math.random() * 100 + '%'; p.style.left = '15px'; }
+  else { p.style.top = Math.random() * 100 + '%'; p.style.right = '15px'; }
+
+  p.style.animationDelay = Math.random() * 4 + 's';
+  p.style.animationDuration = (3 + Math.random() * 3) + 's';
+  document.body.appendChild(p);
+}
+</script>
+
+<div class="brand">
+  BUILT WITH CLAUDE CODE // <a href="https://github.com/struktured-labs/obs-twitch-mcp">OBS-TWITCH-MCP</a>
+</div>
+
+</body>
+</html>
