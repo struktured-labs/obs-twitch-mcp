@@ -263,6 +263,20 @@ def start_chat_listener(token: str = "") -> ChatListener:
     _chat_listener.add_handler(spam_filter.handle_message)
     logger.info("Spam filter enabled - will auto-ban accounts posting spam")
 
+    # Auto-dispatch chat commands (including !ask for AI chat)
+    def command_handler(msg):
+        """Auto-handle !commands from chat."""
+        if not msg.message.startswith("!"):
+            return
+        try:
+            from .tools.commands import handle_chat_command
+            handle_chat_command(msg.username, msg.message)
+        except Exception as e:
+            logger.warning(f"Command handler error: {e}")
+
+    _chat_listener.add_handler(command_handler)
+    logger.info("Chat command auto-dispatch enabled")
+
     # Wire up token refresh callback: when TwitchClient refreshes its token,
     # the ChatListener automatically reconnects with the new token
     twitch = get_twitch_client()

@@ -147,6 +147,30 @@ def _handle_game(username: str, args: str) -> str | None:
     return "Stream is not currently live"
 
 
+def _handle_ask(username: str, args: str) -> str | None:
+    """Handle !ask command - ask Claude AI a question."""
+    if not args:
+        return f"@{username} Usage: !ask <your question>"
+    from ..utils.chat_ai import get_chat_ai
+    ai = get_chat_ai()
+    # Update context with current stream info
+    try:
+        client = get_twitch_client()
+        stream = client.get_stream_info()
+        if stream:
+            ai.set_context(
+                game=stream.get("game_name", ""),
+                title=stream.get("title", ""),
+            )
+    except Exception:
+        pass
+    response = ai.ask(username, args)
+    if response:
+        # Prefix with «claude» so chat knows it's AI
+        return f"«claude» {response}"
+    return None
+
+
 # =============================================================================
 # Register Built-in Commands
 # =============================================================================
@@ -212,6 +236,13 @@ def _register_builtin_commands():
             description="Show current game being played",
             handler=_handle_game,
             cooldown_seconds=10,
+        ),
+        ChatCommand(
+            name="ask",
+            description="Ask Claude AI a question",
+            handler=_handle_ask,
+            cooldown_seconds=30,
+            aliases=["claude", "ai"],
         ),
     ]
 
