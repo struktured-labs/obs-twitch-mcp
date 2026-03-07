@@ -19,6 +19,7 @@ dependencies = [
     "manga-ocr>=0.1.14",
     "playwright>=1.40.0",
     "nest-asyncio>=1.5.0",
+    "duckduckgo-search>=8.1.1",
 ]
 
 [project.optional-dependencies]
