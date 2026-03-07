@@ -265,14 +265,29 @@ def start_chat_listener(token: str = "") -> ChatListener:
 
     # Auto-dispatch chat commands (including !ask for AI chat)
     def command_handler(msg):
-        """Auto-handle !commands from chat."""
+        """Auto-handle !commands from chat, send responses via listener."""
         if not msg.message.startswith("!"):
             return
         try:
-            from .tools.commands import handle_chat_command
-            handle_chat_command(msg.username, msg.message)
+            from .tools.commands import _commands, _check_cooldown
+            parts = msg.message[1:].split(maxsplit=1)
+            command_name = parts[0].lower()
+            args = parts[1] if len(parts) > 1 else ""
+
+            command = _commands.get(command_name)
+            if not command or not command.enabled:
+                return
+
+            if not _check_cooldown(msg.username, command.name, command.cooldown_seconds):
+                return
+
+            logger.info(f"Auto-dispatch: !{command_name} from {msg.username}")
+            response = command.handler(msg.username, args)
+            if response and _chat_listener and _chat_listener.is_running:
+                _chat_listener.send_message(response)
+                logger.info(f"Command response sent: {response[:80]}")
         except Exception as e:
-            logger.warning(f"Command handler error: {e}")
+            logger.warning(f"Command handler error: {e}", exc_info=True)
 
     _chat_listener.add_handler(command_handler)
     logger.info("Chat command auto-dispatch enabled")
