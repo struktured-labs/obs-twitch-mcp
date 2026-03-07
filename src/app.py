@@ -264,8 +264,10 @@ def start_chat_listener(token: str = "") -> ChatListener:
     logger.info("Spam filter enabled - will auto-ban accounts posting spam")
 
     # Auto-dispatch chat commands (including !ask for AI chat)
+    import threading
+
     def command_handler(msg):
-        """Auto-handle !commands from chat, send responses via listener."""
+        """Auto-handle !commands from chat. Runs slow commands in a thread."""
         if not msg.message.startswith("!"):
             return
         try:
@@ -281,13 +283,20 @@ def start_chat_listener(token: str = "") -> ChatListener:
             if not _check_cooldown(msg.username, command.name, command.cooldown_seconds):
                 return
 
-            logger.info(f"Auto-dispatch: !{command_name} from {msg.username}")
-            response = command.handler(msg.username, args)
-            if response and _chat_listener and _chat_listener.is_running:
-                _chat_listener.send_message(response)
-                logger.info(f"Command response sent: {response[:80]}")
+            def _run_command():
+                try:
+                    logger.info(f"Auto-dispatch: !{command_name} from {msg.username}")
+                    response = command.handler(msg.username, args)
+                    if response and _chat_listener and _chat_listener.is_running:
+                        _chat_listener.send_message(response)
+                        logger.info(f"Command response sent: {response[:80]}")
+                except Exception as e:
+                    logger.warning(f"Command handler error: {e}", exc_info=True)
+
+            # Run in a separate thread so we don't block the IRC listener
+            threading.Thread(target=_run_command, daemon=True).start()
         except Exception as e:
-            logger.warning(f"Command handler error: {e}", exc_info=True)
+            logger.warning(f"Command dispatch error: {e}", exc_info=True)
 
     _chat_listener.add_handler(command_handler)
     logger.info("Chat command auto-dispatch enabled")
