@@ -15,11 +15,8 @@ import time
 from dataclasses import dataclass, field
 
 import anthropic
-import warnings
-# Suppress rename warning from duckduckgo_search
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    from duckduckgo_search import DDGS
+import httpx as _httpx
+from lxml import html as _lxml_html
 
 from .logger import get_logger
 
@@ -87,8 +84,12 @@ def _is_query_blocked(query: str) -> bool:
     return bool(_blocked_re.search(query))
 
 
-def _safe_web_search(query: str, max_results: int = 3) -> str:
-    """Execute a web search with content filtering. Returns formatted results."""
+def _safe_web_search(query: str, max_results: int = 5) -> str:
+    """Execute a web search via Brave Search with content filtering.
+
+    Uses Brave's HTML search (no API key required) with moderate safesearch.
+    Falls back gracefully on errors.
+    """
     if _is_query_blocked(query):
         logger.warning(f"Blocked search query: {query}")
         return "Search blocked: that topic is not allowed."
@@ -97,19 +98,42 @@ def _safe_web_search(query: str, max_results: int = 3) -> str:
     query = query[:200]
 
     try:
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=max_results, safesearch="strict"))
+        resp = _httpx.get(
+            "https://search.brave.com/search",
+            params={"q": query, "safesearch": "moderate"},
+            headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"},
+            timeout=8,
+            follow_redirects=True,
+        )
 
-        if not results:
+        if resp.status_code != 200:
+            return f"Search returned status {resp.status_code}"
+
+        tree = _lxml_html.fromstring(resp.text)
+        result_divs = tree.xpath('//div[@data-type="web"]')
+
+        if not result_divs:
             return "No results found."
 
         formatted = []
-        for r in results:
-            title = r.get("title", "")
-            body = r.get("body", "")[:200]
-            formatted.append(f"- {title}: {body}")
+        for div in result_divs[:max_results]:
+            # Extract title from heading link
+            title_els = div.xpath('.//a[contains(@class, "heading")]')
+            if not title_els:
+                title_els = div.xpath('.//a[@href]')
+            title = title_els[0].text_content().strip() if title_els else ""
 
-        return "\n".join(formatted)
+            # Extract description from snippet
+            desc_els = div.xpath('.//div[contains(@class, "snippet-description")]')
+            if not desc_els:
+                desc_els = div.xpath('.//p')
+            desc = desc_els[0].text_content().strip()[:200] if desc_els else ""
+
+            if title or desc:
+                formatted.append(f"- {title}: {desc}" if desc else f"- {title}")
+
+        return "\n".join(formatted) if formatted else "No results found."
+
     except Exception as e:
         logger.error(f"Web search error: {e}")
         return f"Search failed: {e}"
