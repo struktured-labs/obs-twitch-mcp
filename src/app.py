@@ -156,8 +156,14 @@ def get_twitch_client() -> TwitchClient:
     return _twitch_client
 
 
-def refresh_twitch_client() -> TwitchClient:
-    """Force refresh of Twitch client (e.g., after token update)."""
+def refresh_twitch_client(token: str = "") -> TwitchClient:
+    """Force refresh of Twitch client (e.g., after token update).
+
+    Args:
+        token: If provided, use this token directly instead of re-discovering.
+               This avoids redundant refresh calls when the caller already has
+               a fresh token.
+    """
     global _twitch_client, _chat_listener
 
     # Stop existing listener
@@ -166,10 +172,21 @@ def refresh_twitch_client() -> TwitchClient:
         _chat_listener = None
 
     _twitch_client = None
-    client = get_twitch_client()
 
-    # Restart listener with new token
-    start_chat_listener()
+    if token:
+        # Use the provided token directly - skip re-discovery
+        _twitch_client = TwitchClient(
+            client_id=os.getenv("TWITCH_CLIENT_ID", ""),
+            client_secret=os.getenv("TWITCH_CLIENT_SECRET", ""),
+            oauth_token=token,
+            channel=os.getenv("TWITCH_CHANNEL", ""),
+        )
+        client = _twitch_client
+    else:
+        client = get_twitch_client()
+
+    # Restart listener with the same token
+    start_chat_listener(token=token)
 
     return client
 
@@ -206,15 +223,20 @@ def _create_sse_handler():
     return handler
 
 
-def start_chat_listener() -> ChatListener:
-    """Start the background chat listener."""
+def start_chat_listener(token: str = "") -> ChatListener:
+    """Start the background chat listener.
+
+    Args:
+        token: If provided, use this token directly instead of re-discovering.
+    """
     global _chat_listener
 
     if _chat_listener and _chat_listener.is_running:
         return _chat_listener
 
     channel = os.getenv("TWITCH_CHANNEL", "")
-    token = _get_oauth_token()
+    if not token:
+        token = _get_oauth_token()
 
     if not channel or not token:
         raise ValueError("TWITCH_CHANNEL and OAuth token required for chat listener")
@@ -240,6 +262,11 @@ def start_chat_listener() -> ChatListener:
     spam_filter = enable_spam_filter(ban_callback)
     _chat_listener.add_handler(spam_filter.handle_message)
     logger.info("Spam filter enabled - will auto-ban accounts posting spam")
+
+    # Wire up token refresh callback: when TwitchClient refreshes its token,
+    # the ChatListener automatically reconnects with the new token
+    twitch = get_twitch_client()
+    twitch._on_token_refresh = _chat_listener.reconnect_with_token
 
     _chat_listener.start()
     return _chat_listener

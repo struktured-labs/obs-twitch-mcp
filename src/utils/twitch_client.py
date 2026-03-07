@@ -44,6 +44,7 @@ class TwitchClient:
     _profile_cache: dict[str, dict] = field(default_factory=dict)
     _profile_cache_max_size: int = 20
     _token_expires_at: float = 0.0
+    _on_token_refresh: Callable[[str], None] | None = None
 
     def __post_init__(self) -> None:
         """Initialize token expiry from saved token file."""
@@ -79,6 +80,12 @@ class TwitchClient:
             self._token_expires_at = time.time() + new_token.get("expires_in", 0)
             self._user_id = None  # Reset cached user ID
             logger.info(f"Token auto-refreshed successfully (expires in {new_token.get('expires_in', 0)}s)")
+            # Notify listener so it can reconnect with the new token
+            if self._on_token_refresh:
+                try:
+                    self._on_token_refresh(self.oauth_token)
+                except Exception as cb_err:
+                    logger.warning(f"Token refresh callback error: {cb_err}")
             return True
         except Exception as e:
             logger.error(f"Token refresh failed: {e}")

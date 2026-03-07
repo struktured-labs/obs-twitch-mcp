@@ -206,6 +206,19 @@ class ChatListener:
     def is_running(self) -> bool:
         return self._running
 
+    def reconnect_with_token(self, new_token: str) -> None:
+        """Reconnect IRC with a new token (called when token is refreshed)."""
+        logger.info("Reconnecting chat listener with refreshed token...")
+        self.oauth_token = new_token
+        if self._socket:
+            try:
+                self._socket.close()
+            except Exception:
+                pass
+            self._socket = None
+        # The listen loop will detect the broken socket and reconnect
+        # using the updated self.oauth_token
+
     def send_message(self, message: str) -> None:
         """Send a message through the persistent IRC connection (non-blocking)."""
         if not self._running or not self._socket:

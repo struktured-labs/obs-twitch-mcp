@@ -121,8 +121,8 @@ def twitch_refresh_token() -> dict:
         # Actually refresh the token via Twitch OAuth API
         new_token = get_valid_token(client_id, client_secret)
 
-        # Now reload the client with the fresh token
-        client = refresh_twitch_client()
+        # Reload the client with the SAME token - don't re-discover
+        client = refresh_twitch_client(token=new_token)
 
         return {
             "status": "refreshed",
@@ -151,12 +151,23 @@ def twitch_reconnect() -> dict:
     """
     from ..utils.twitch_auth import validate_token, load_token
 
-    # Refresh the client (stops listener, gets new token, restarts listener)
-    client = refresh_twitch_client()
+    # Get a valid token first, then pass it through
+    client_id = os.getenv("TWITCH_CLIENT_ID", "")
+    client_secret = os.getenv("TWITCH_CLIENT_SECRET", "")
+    token = ""
+    if client_id and client_secret:
+        try:
+            token = get_valid_token(client_id, client_secret)
+        except Exception:
+            pass
+    if not token:
+        token_data = load_token()
+        token = token_data.get("access_token", "") if token_data else ""
 
-    # Validate the new token and get expiry info
-    token_data = load_token()
-    token = token_data.get("access_token", "") if token_data else ""
+    # Refresh the client with the known token
+    client = refresh_twitch_client(token=token)
+
+    # Validate the token
     validation = validate_token(token) if token else None
 
     if validation:
@@ -259,8 +270,9 @@ def twitch_reauth() -> dict:
         # This validates first, then refreshes only if needed
         new_token = get_valid_token(client_id, client_secret)
 
-        # Reconnect client with new token
-        client = refresh_twitch_client()
+        # Reconnect client with the SAME token - don't re-discover
+        # (avoids double/triple refresh race condition)
+        client = refresh_twitch_client(token=new_token)
 
         # Validate and get info
         validation = validate_token(new_token)
@@ -312,7 +324,7 @@ def twitch_reauth() -> dict:
                 return {"status": "error", "message": "auth.py succeeded but token file not found"}
 
             new_token = token_data["access_token"]
-            client = refresh_twitch_client()
+            client = refresh_twitch_client(token=new_token)
 
             validation = validate_token(new_token)
             if validation:
@@ -335,9 +347,10 @@ def twitch_reauth() -> dict:
             # Device code flow timed out waiting for user - check if token was saved anyway
             token_data = load_token()
             if token_data:
-                validation = validate_token(token_data.get("access_token", ""))
+                fallback_token = token_data.get("access_token", "")
+                validation = validate_token(fallback_token)
                 if validation:
-                    client = refresh_twitch_client()
+                    client = refresh_twitch_client(token=fallback_token)
                     return {
                         "status": "success",
                         "method": "device code flow (late)",
