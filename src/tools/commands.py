@@ -167,7 +167,7 @@ def _handle_ask(username: str, args: str) -> str | None:
     response = ai.ask(username, args)
     if response:
         # Prefix with «claude» so chat knows it's AI
-        return f"«claude» {response}"
+        return f"«lesser-claude» {response}"
     return None
 
 
