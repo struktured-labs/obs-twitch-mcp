@@ -7,7 +7,10 @@ from datetime import datetime
 
 from ..app import mcp, get_twitch_client, refresh_twitch_client, get_chat_listener
 from ..utils import chat_logger
+from ..utils.logger import get_logger
 from ..utils.twitch_auth import save_token, load_token, get_valid_token, TokenExpiredError
+
+logger = get_logger("chat_tools")
 
 
 
