@@ -233,11 +233,16 @@ def obs_set_volume(source_name: str, volume_db: float) -> str:
 
 
 @mcp.tool()
-def obs_mute(source_name: str, muted: bool = True) -> str:
-    """Mute or unmute an audio source."""
+def obs_mute(source_name: str, mute: bool = True) -> str:
+    """Mute or unmute an audio source.
+
+    Args:
+        source_name: Name of the audio source
+        mute: True to mute, False to unmute
+    """
     client = get_obs_client()
-    client.set_mute(source_name, muted)
-    state = "muted" if muted else "unmuted"
+    client.set_mute(source_name, mute)
+    state = "muted" if mute else "unmuted"
     return f"Source '{source_name}' {state}"
 
 
