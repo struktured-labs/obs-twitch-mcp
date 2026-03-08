@@ -3,9 +3,7 @@ Twitch chat interaction tools.
 """
 
 import os
-import subprocess
 from datetime import datetime
-from pathlib import Path
 
 from ..app import mcp, get_twitch_client, refresh_twitch_client, get_chat_listener
 from ..utils import chat_logger
@@ -268,11 +266,14 @@ def twitch_reauth() -> dict:
     try:
         # Use get_valid_token - same as auth.py does
         # This validates first, then refreshes only if needed
+        logger.info("twitch_reauth: calling get_valid_token...")
         new_token = get_valid_token(client_id, client_secret)
+        logger.info("twitch_reauth: token obtained, refreshing client...")
 
         # Reconnect client with the SAME token - don't re-discover
         # (avoids double/triple refresh race condition)
         client = refresh_twitch_client(token=new_token)
+        logger.info("twitch_reauth: client refreshed, validating...")
 
         # Validate and get info
         validation = validate_token(new_token)
@@ -293,79 +294,14 @@ def twitch_reauth() -> dict:
             }
 
     except (TokenExpiredError, Exception) as e:
-        # Fallback: run auth.py as subprocess (handles edge cases the in-process refresh misses)
-        auth_script = Path(__file__).parent.parent.parent / "auth.py"
-        if not auth_script.exists():
-            return {"status": "error", "message": str(e)}
-
-        try:
-            env = {**os.environ, "TWITCH_CLIENT_ID": client_id, "TWITCH_CLIENT_SECRET": client_secret}
-            # auth.py now falls back to device code flow if refresh fails,
-            # which can take up to 5 minutes for user to authorize in browser
-            result = subprocess.run(
-                ["uv", "run", "python", str(auth_script)],
-                cwd=str(auth_script.parent),
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-            if result.returncode != 0:
-                # Check if device code flow output is in stderr (user needs to visit URL)
-                output = (result.stdout + result.stderr).strip()
-                return {
-                    "status": "error",
-                    "message": f"In-process refresh failed: {e}. auth.py fallback also failed:\n{output}",
-                }
-
-            # auth.py saved the new token to disk - load it and reconnect
-            token_data = load_token()
-            if not token_data:
-                return {"status": "error", "message": "auth.py succeeded but token file not found"}
-
-            new_token = token_data["access_token"]
-            client = refresh_twitch_client(token=new_token)
-
-            validation = validate_token(new_token)
-            if validation:
-                expires_hours = validation.get("expires_in", 0) // 3600
-                return {
-                    "status": "success",
-                    "method": "auth.py fallback",
-                    "channel": client.channel,
-                    "user": validation.get("login"),
-                    "token_expires_in": f"{expires_hours} hours",
-                    "scopes": validation.get("scopes", []),
-                }
-            return {
-                "status": "refreshed",
-                "method": "auth.py fallback",
-                "channel": client.channel,
-                "message": "Token refreshed via auth.py but validation failed - may still work",
-            }
-        except subprocess.TimeoutExpired as timeout_err:
-            # Device code flow timed out waiting for user - check if token was saved anyway
-            token_data = load_token()
-            if token_data:
-                fallback_token = token_data.get("access_token", "")
-                validation = validate_token(fallback_token)
-                if validation:
-                    client = refresh_twitch_client(token=fallback_token)
-                    return {
-                        "status": "success",
-                        "method": "device code flow (late)",
-                        "channel": client.channel,
-                        "user": validation.get("login"),
-                    }
-            return {
-                "status": "error",
-                "message": f"In-process refresh failed: {e}. Device code flow timed out waiting for browser authorization.",
-            }
-        except Exception as fallback_err:
-            return {
-                "status": "error",
-                "message": f"In-process refresh failed: {e}. auth.py fallback error: {fallback_err}",
-            }
+        logger.error(f"twitch_reauth: in-process refresh failed: {e}")
+        # Don't fall back to auth.py subprocess — it can block for minutes
+        # waiting for device code flow that will never complete in MCP context.
+        # Instead, just return the error and let the user run auth.py manually.
+        return {
+            "status": "error",
+            "message": f"Token refresh failed: {e}. Run 'uv run python auth.py' in the MCP server directory.",
+        }
 
 
 @mcp.tool()
