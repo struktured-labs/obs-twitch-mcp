@@ -25,16 +25,16 @@ logger = get_logger("chat_ai")
 # Safety: max tokens for response (keeps costs low and responses chat-friendly)
 MAX_RESPONSE_TOKENS = 250
 # Rate limits
-USER_COOLDOWN_SECONDS = 30
-GLOBAL_COOLDOWN_SECONDS = 5
+USER_COOLDOWN_SECONDS = 10
+GLOBAL_COOLDOWN_SECONDS = 2
 # Cost cap: max API calls per stream session (each tool round-trip counts as 1)
-MAX_CALLS_PER_SESSION = 500
+MAX_CALLS_PER_SESSION = 1500
 # Max searches per session (subset of calls)
-MAX_SEARCHES_PER_SESSION = 100
+MAX_SEARCHES_PER_SESSION = 300
 # Max screenshots per session (vision calls cost more)
-MAX_SCREENSHOTS_PER_SESSION = 20
+MAX_SCREENSHOTS_PER_SESSION = 60
 # Max audio transcriptions per session
-MAX_AUDIO_PER_SESSION = 30
+MAX_AUDIO_PER_SESSION = 90
 
 # Content blocklist — queries containing these are rejected before hitting any search engine
 BLOCKED_QUERY_PATTERNS = [
