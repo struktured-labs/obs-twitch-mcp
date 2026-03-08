@@ -357,6 +357,9 @@ class ChatAI:
     _user_cooldowns: dict[str, float] = field(default_factory=dict)
     _last_global_call: float = 0.0
     _context: str = ""  # read-only stream context (game, title)
+    # Per-user conversation memory: {username: [(question, answer), ...]}
+    _user_history: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
+    _max_history_per_user: int = 10
 
     def _get_client(self) -> anthropic.Anthropic:
         if self._client is None:
@@ -492,7 +495,15 @@ class ChatAI:
 
         try:
             client = self._get_client()
-            messages = [{"role": "user", "content": f"{username} asks: {message}"}]
+
+            # Build messages with per-user conversation history
+            messages = []
+            user_key = username.lower()
+            history = self._user_history.get(user_key, [])
+            for prev_q, prev_a in history:
+                messages.append({"role": "user", "content": f"{username} asks: {prev_q}"})
+                messages.append({"role": "assistant", "content": prev_a})
+            messages.append({"role": "user", "content": f"{username} asks: {message}"})
 
             # First call — may request a tool
             response = client.messages.create(
@@ -547,6 +558,14 @@ class ChatAI:
 
             result = self._sanitize_output(result)
 
+            # Save to per-user conversation history
+            if user_key not in self._user_history:
+                self._user_history[user_key] = []
+            self._user_history[user_key].append((message, result))
+            # Keep only last N exchanges per user
+            if len(self._user_history[user_key]) > self._max_history_per_user:
+                self._user_history[user_key] = self._user_history[user_key][-self._max_history_per_user:]
+
             searched = " [searched]" if self._search_count > 0 else ""
             logger.info(
                 f"Chat AI [{self._call_count}/{MAX_CALLS_PER_SESSION}]{searched}: "
@@ -571,6 +590,7 @@ class ChatAI:
         self._screenshot_count = 0
         self._audio_count = 0
         self._user_cooldowns.clear()
+        self._user_history.clear()
         self._last_global_call = 0.0
         logger.info("Chat AI session reset")
 
