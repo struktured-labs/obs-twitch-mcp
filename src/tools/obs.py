@@ -33,6 +33,38 @@ def obs_get_current_scene() -> str:
 
 
 @mcp.tool()
+def obs_create_scene(scene_name: str) -> str:
+    """
+    Create a new OBS scene.
+
+    Args:
+        scene_name: Name for the new scene
+
+    Returns:
+        Confirmation message
+    """
+    client = get_obs_client()
+    client.create_scene(scene_name)
+    return f"Created scene: {scene_name}"
+
+
+@mcp.tool()
+def obs_remove_scene(scene_name: str) -> str:
+    """
+    Remove an OBS scene.
+
+    Args:
+        scene_name: Name of the scene to remove
+
+    Returns:
+        Confirmation message
+    """
+    client = get_obs_client()
+    client.remove_scene(scene_name)
+    return f"Removed scene: {scene_name}"
+
+
+@mcp.tool()
 def obs_switch_scene(scene_name: str) -> str:
     """Switch to a specific OBS scene."""
     client = get_obs_client()
@@ -195,6 +227,95 @@ def obs_list_inputs() -> list[dict]:
     """List all inputs/sources registered in OBS (even orphaned ones not in any scene)."""
     client = get_obs_client()
     return client.list_inputs()
+
+
+@mcp.tool()
+def obs_repick_window(source_name: str, scene_name: str = "") -> str:
+    """
+    Re-pick the window for a PipeWire screen capture source.
+
+    LIMITATION: On KDE Wayland, the XDG portal picker only triggers from OBS
+    GUI interactions, not from websocket API calls. This tool removes and recreates
+    the source which MAY trigger the picker on some portal implementations.
+    If the picker doesn't appear, open OBS > right-click source > Properties.
+
+    For reliable capture, prefer using a full-monitor PipeWire source (e.g.
+    lg-full-screen) with a crop filter instead of per-window capture.
+
+    Args:
+        source_name: Name of the PipeWire screen capture source to re-pick
+        scene_name: Scene the source is in (uses current scene if not specified)
+
+    Returns:
+        Confirmation that the source was recreated
+    """
+    client = get_obs_client()
+    if not scene_name:
+        scene_name = client.get_current_scene()
+
+    # Get the current source settings before removing
+    try:
+        settings = client.client.get_input_settings(source_name)
+        if settings.input_kind != "pipewire-screen-capture-source":
+            return f"'{source_name}' is not a PipeWire capture source (it's {settings.input_kind})"
+        old_settings = dict(settings.input_settings)
+    except Exception as e:
+        return f"Could not find source '{source_name}': {e}"
+
+    # Get scene item ID and transform before removing
+    scene_item_id = None
+    transform = None
+    try:
+        items = client.client.get_scene_item_list(scene_name)
+        for item in items.scene_items:
+            if item["sourceName"] == source_name:
+                scene_item_id = item["sceneItemId"]
+                transform = client.client.get_scene_item_transform(
+                    scene_name, scene_item_id
+                )
+                break
+    except Exception:
+        pass
+
+    # Remove scene item first, then input
+    if scene_item_id:
+        try:
+            client.client.remove_scene_item(scene_name, scene_item_id)
+        except Exception:
+            pass
+
+    try:
+        client.client.remove_input(source_name)
+    except Exception:
+        pass
+
+    # Recreate with cleared restore token to force picker
+    new_settings = {k: v for k, v in old_settings.items() if k != "RestoreToken"}
+    try:
+        result = client.client.create_input(
+            scene_name, source_name, "pipewire-screen-capture-source",
+            new_settings, True
+        )
+        # Restore transform if we had one
+        if transform and result:
+            try:
+                new_item_id = result.scene_item_id
+                client.client.set_scene_item_transform(
+                    scene_name, new_item_id, {
+                        "positionX": transform.scene_item_transform.get("positionX", 0),
+                        "positionY": transform.scene_item_transform.get("positionY", 0),
+                        "scaleX": transform.scene_item_transform.get("scaleX", 1),
+                        "scaleY": transform.scene_item_transform.get("scaleY", 1),
+                        "boundsType": transform.scene_item_transform.get("boundsType", ""),
+                        "boundsWidth": transform.scene_item_transform.get("boundsWidth", 0),
+                        "boundsHeight": transform.scene_item_transform.get("boundsHeight", 0),
+                    }
+                )
+            except Exception:
+                pass
+        return f"Recreated '{source_name}' in '{scene_name}'. If the portal picker didn't appear, open OBS > right-click > Properties."
+    except Exception as e:
+        return f"Failed to recreate source: {e}"
 
 
 @mcp.tool()

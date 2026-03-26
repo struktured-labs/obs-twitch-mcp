@@ -237,48 +237,20 @@ def twitch_get_polls() -> list[dict]:
     return client.get_polls()
 
 
-@mcp.tool()
-def twitch_reauth() -> dict:
+_device_code_state: dict | None = None
+"""Tracks in-progress device code auth flow (non-blocking)."""
+
+
+def _try_token_file_and_reconnect(client_id: str, client_secret: str) -> dict | None:
     """
-    Refresh Twitch token and reconnect automatically.
-
-    Uses get_valid_token which will:
-    1. Return existing token if still valid
-    2. Refresh via refresh_token if expired
-    3. Raise error only if refresh_token itself is invalid
-
-    Use this when:
-    - Chat messages aren't sending
-    - API calls fail with 401
-    - Token has expired
-
-    Returns:
-        Dict with status, channel, user info, and token expiry
+    Try to get a valid token from the token file (same as auth.py does).
+    Returns success dict or None if it didn't work.
     """
     from ..utils.twitch_auth import validate_token
 
-    client_id = os.getenv("TWITCH_CLIENT_ID", "")
-    client_secret = os.getenv("TWITCH_CLIENT_SECRET", "")
-
-    if not client_id or not client_secret:
-        return {
-            "status": "error",
-            "message": "TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET required",
-        }
-
     try:
-        # Use get_valid_token - same as auth.py does
-        # This validates first, then refreshes only if needed
-        logger.info("twitch_reauth: calling get_valid_token...")
         new_token = get_valid_token(client_id, client_secret)
-        logger.info("twitch_reauth: token obtained, refreshing client...")
-
-        # Reconnect client with the SAME token - don't re-discover
-        # (avoids double/triple refresh race condition)
         client = refresh_twitch_client(token=new_token)
-        logger.info("twitch_reauth: client refreshed, validating...")
-
-        # Validate and get info
         validation = validate_token(new_token)
         if validation:
             expires_hours = validation.get("expires_in", 0) // 3600
@@ -295,15 +267,228 @@ def twitch_reauth() -> dict:
                 "channel": client.channel,
                 "message": "Token refreshed but validation failed - may still work",
             }
+    except Exception:
+        return None
 
-    except (TokenExpiredError, Exception) as e:
-        logger.error(f"twitch_reauth: in-process refresh failed: {e}")
-        # Don't fall back to auth.py subprocess — it can block for minutes
-        # waiting for device code flow that will never complete in MCP context.
-        # Instead, just return the error and let the user run auth.py manually.
+
+def _run_auth_py_subprocess(client_id: str, client_secret: str) -> dict | None:
+    """
+    Run auth.py as a subprocess — this is what always works.
+    auth.py reads the token file, refreshes via Twitch API, and saves.
+    Only blocks for a few seconds (no interactive prompts unless refresh
+    token is truly dead).
+    """
+    import subprocess
+    from pathlib import Path
+    from ..utils.twitch_auth import validate_token
+
+    auth_py = Path(__file__).parent.parent.parent / "auth.py"
+    if not auth_py.exists():
+        return None
+
+    try:
+        logger.info("twitch_reauth: running auth.py subprocess...")
+        env = dict(os.environ)
+        env["TWITCH_CLIENT_ID"] = client_id
+        env["TWITCH_CLIENT_SECRET"] = client_secret
+
+        result = subprocess.run(
+            ["uv", "run", "python", str(auth_py)],
+            cwd=str(auth_py.parent),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=15,  # 15 second timeout — if it needs browser input, bail
+        )
+
+        if result.returncode == 0 and "SUCCESS" in result.stdout:
+            logger.info("twitch_reauth: auth.py succeeded, loading fresh token...")
+            # auth.py saved the token file — now load and reconnect
+            new_token = get_valid_token(client_id, client_secret)
+            client = refresh_twitch_client(token=new_token)
+            validation = validate_token(new_token)
+            if validation:
+                expires_hours = validation.get("expires_in", 0) // 3600
+                return {
+                    "status": "success",
+                    "channel": client.channel,
+                    "user": validation.get("login"),
+                    "token_expires_in": f"{expires_hours} hours",
+                    "scopes": validation.get("scopes", []),
+                }
+            return {
+                "status": "refreshed",
+                "channel": client.channel,
+                "message": "Token refreshed via auth.py",
+            }
+        else:
+            logger.warning(f"twitch_reauth: auth.py failed: {result.stderr[:200]}")
+            return None
+    except subprocess.TimeoutExpired:
+        logger.warning("twitch_reauth: auth.py timed out (probably needs browser auth)")
+        return None
+    except Exception as e:
+        logger.warning(f"twitch_reauth: auth.py subprocess error: {e}")
+        return None
+
+
+@mcp.tool()
+def twitch_reauth() -> dict:
+    """
+    Refresh Twitch token and reconnect automatically.
+
+    Flow:
+    1. Return existing token if still valid
+    2. Refresh via refresh_token if expired
+    3. If refresh_token itself is invalid, start device code flow
+       and return the URL/code for the user to authorize in browser.
+       Call twitch_reauth again after authorizing to complete.
+
+    Use this when:
+    - Chat messages aren't sending
+    - API calls fail with 401
+    - Token has expired
+
+    Returns:
+        Dict with status, channel, user info, and token expiry
+    """
+    global _device_code_state
+    from ..utils.twitch_auth import (
+        validate_token,
+        get_device_code,
+        save_token,
+    )
+
+    client_id = os.getenv("TWITCH_CLIENT_ID", "")
+    client_secret = os.getenv("TWITCH_CLIENT_SECRET", "")
+
+    if not client_id or not client_secret:
         return {
             "status": "error",
-            "message": f"Token refresh failed: {e}. Run 'uv run python auth.py' in the MCP server directory.",
+            "message": "TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET required",
+        }
+
+    # ALWAYS try the token file first — even if there's a pending device code.
+    # Another process (auth.py, another session) may have refreshed it.
+    logger.info("twitch_reauth: trying token file first...")
+    result = _try_token_file_and_reconnect(client_id, client_secret)
+    if result:
+        _device_code_state = None  # Clear any pending device code
+        return result
+
+    # Token file didn't work — try running auth.py subprocess.
+    # This is the most reliable path: same thing that works from CLI.
+    logger.info("twitch_reauth: token file failed, trying auth.py subprocess...")
+    result = _run_auth_py_subprocess(client_id, client_secret)
+    if result:
+        _device_code_state = None
+        return result
+
+    # If there's a pending device code flow, check if user authorized
+    if _device_code_state:
+        logger.info("twitch_reauth: checking pending device code auth...")
+        try:
+            import time
+            state = _device_code_state
+            elapsed = time.time() - state["started_at"]
+            if elapsed > state["expires_in"]:
+                _device_code_state = None
+                return {
+                    "status": "error",
+                    "message": "Device code expired. Call twitch_reauth again to get a new code.",
+                }
+
+            import httpx
+            resp = httpx.post(
+                "https://id.twitch.tv/oauth2/token",
+                data={
+                    "client_id": client_id,
+                    "scopes": " ".join(state["scopes"]),
+                    "device_code": state["device_code"],
+                    "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                },
+                timeout=10.0,
+            )
+            data = resp.json()
+
+            if resp.status_code == 200:
+                _device_code_state = None
+                save_token(data)
+                new_token = data["access_token"]
+                client = refresh_twitch_client(token=new_token)
+                validation = validate_token(new_token)
+                if validation:
+                    expires_hours = validation.get("expires_in", 0) // 3600
+                    return {
+                        "status": "success",
+                        "channel": client.channel,
+                        "user": validation.get("login"),
+                        "token_expires_in": f"{expires_hours} hours",
+                        "scopes": validation.get("scopes", []),
+                    }
+                return {
+                    "status": "success",
+                    "channel": client.channel,
+                    "message": "Authorized via device code flow",
+                }
+            elif data.get("message") == "authorization_pending":
+                return {
+                    "status": "awaiting_auth",
+                    "message": f"Still waiting for browser authorization. Go to: {state['verification_uri']}?device-code={state['user_code']} and enter code: {state['user_code']}",
+                    "url": state["verification_uri"],
+                    "code": state["user_code"],
+                    "elapsed_seconds": int(elapsed),
+                    "expires_in_seconds": state["expires_in"] - int(elapsed),
+                }
+            else:
+                _device_code_state = None
+                return {
+                    "status": "error",
+                    "message": f"Device code auth failed: {data}",
+                }
+        except Exception as e:
+            _device_code_state = None
+            return {"status": "error", "message": f"Device code poll failed: {e}"}
+
+    # Last resort: start device code flow
+    logger.warning("twitch_reauth: all refresh methods failed, starting device code flow...")
+    try:
+        import time
+        scopes = [
+            "chat:edit", "chat:read",
+            "channel:manage:broadcast", "channel:manage:polls",
+            "channel:manage:predictions", "channel:manage:raids",
+            "channel:manage:schedule", "channel:manage:videos",
+            "channel:read:polls", "channel:read:predictions",
+            "channel:read:subscriptions", "channel:read:vips",
+            "moderator:manage:announcements",
+            "moderator:manage:banned_users", "moderator:manage:blocked_terms",
+            "moderator:manage:chat_messages", "moderator:manage:shoutouts",
+            "moderator:read:blocked_terms", "moderator:read:chatters",
+            "clips:edit",
+        ]
+        device_data = get_device_code(client_id, scopes)
+        _device_code_state = {
+            "device_code": device_data["device_code"],
+            "user_code": device_data["user_code"],
+            "verification_uri": device_data["verification_uri"],
+            "expires_in": device_data["expires_in"],
+            "scopes": scopes,
+            "started_at": time.time(),
+        }
+
+        return {
+            "status": "device_code_started",
+            "message": "Refresh token expired. Authorize in browser, then call twitch_reauth again.",
+            "url": device_data["verification_uri"],
+            "code": device_data["user_code"],
+            "full_url": f"{device_data['verification_uri']}?device-code={device_data['user_code']}",
+            "expires_in_seconds": device_data["expires_in"],
+        }
+    except Exception as dc_err:
+        return {
+            "status": "error",
+            "message": f"All auth methods failed: {dc_err}",
         }
 
 

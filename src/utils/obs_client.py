@@ -48,6 +48,14 @@ class OBSClient:
             "output_skipped_frames": s.output_skipped_frames,
         }
 
+    def create_scene(self, scene_name: str) -> None:
+        """Create a new scene."""
+        self.client.create_scene(scene_name)
+
+    def remove_scene(self, scene_name: str) -> None:
+        """Remove a scene."""
+        self.client.remove_scene(scene_name)
+
     def list_scenes(self) -> list[str]:
         """List all scene names."""
         scenes = self.client.get_scene_list()

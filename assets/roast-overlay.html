@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; }
+  body {
+    background: transparent;
+    width: 1920px;
+    height: 1080px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: 'Press Start 2P', monospace;
+  }
+  .roast {
+    font-size: 80px;
+    color: #ff4444;
+    text-shadow:
+      4px 4px 0 #000,
+      -2px -2px 0 #000,
+      0 0 40px rgba(255,0,0,0.8),
+      0 0 80px rgba(255,0,0,0.4);
+    animation: roastIn 0.3s ease-out, roastPulse 0.5s ease-in-out 0.3s 3, roastOut 0.5s ease-in 2.3s forwards;
+    opacity: 0;
+  }
+  @keyframes roastIn {
+    0% { opacity: 0; transform: scale(3) rotate(-10deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+  @keyframes roastPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+  @keyframes roastOut {
+    0% { opacity: 1; }
+    100% { opacity: 0; transform: scale(0.5); }
+  }
+  .sub {
+    position: absolute;
+    bottom: 350px;
+    font-size: 28px;
+    color: #ffaa00;
+    text-shadow: 2px 2px 0 #000;
+    animation: subIn 0.5s ease-out 0.5s both;
+  }
+  @keyframes subIn {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div class="roast">300 CLUB</div>
+<div class="sub">311 DEATHS — SERENADE SENDS HER REGARDS</div>
+</body>
+</html>

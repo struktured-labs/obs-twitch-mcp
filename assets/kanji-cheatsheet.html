@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: rgba(0, 0, 0, 0.85);
+    width: 800px;
+    height: 580px;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #ddd;
+    padding: 12px;
+  }
+  h2 {
+    font-size: 30px;
+    color: #e8d08c;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 24px;
+  }
+  th {
+    background: rgba(201, 168, 76, 0.2);
+    color: #e8d08c;
+    padding: 5px 6px;
+    text-align: left;
+    border-bottom: 1px solid #c9a84c;
+    font-size: 21px;
+    letter-spacing: 1px;
+  }
+  td {
+    padding: 5px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  tr:hover { background: rgba(255,255,255,0.03); }
+  .kanji { font-size: 45px; }
+  .safe-easy { color: #66ff66; }
+  .safe-mid { color: #ffcc44; }
+  .safe-hard { color: #ff6644; }
+  .hint { color: #aaa; font-size: 21px; }
+  .order { color: #888; font-size: 21px; }
+  .footer {
+    margin-top: 6px;
+    font-size: 20px;
+    color: #666;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<h2>Serenade HolyDeath — Kanji Safe Zones</h2>
+<table>
+  <tr>
+    <th>#</th>
+    <th>Kanji</th>
+    <th>Meaning</th>
+    <th>Safe %</th>
+    <th>Where to Stand</th>
+  </tr>
+  <tr>
+    <td class="order">5</td>
+    <td class="kanji">悲</td>
+    <td>Sorrow</td>
+    <td class="safe-easy">71.6%</td>
+    <td class="hint">Gaps between 非 radical and 心 heart</td>
+  </tr>
+  <tr>
+    <td class="order">4</td>
+    <td class="kanji">戦</td>
+    <td>Battle</td>
+    <td class="safe-easy">70.1%</td>
+    <td class="hint">Interior pockets — left radical has generous gaps</td>
+  </tr>
+  <tr>
+    <td class="order">1</td>
+    <td class="kanji">死</td>
+    <td>Death</td>
+    <td class="safe-mid">55.7%</td>
+    <td class="hint">Center gap between left diagonal and right 匕</td>
+  </tr>
+  <tr>
+    <td class="order">3</td>
+    <td class="kanji">竜</td>
+    <td>Dragon</td>
+    <td class="safe-mid">52.5%</td>
+    <td class="hint">Inside body between horizontal strokes — tight</td>
+  </tr>
+  <tr>
+    <td class="order">6</td>
+    <td class="kanji">天</td>
+    <td>Heaven</td>
+    <td class="safe-hard">50.6%</td>
+    <td class="hint">Big triangle gap at bottom between the two legs</td>
+  </tr>
+  <tr>
+    <td class="order">2</td>
+    <td class="kanji">胃</td>
+    <td>Stomach</td>
+    <td class="safe-hard">49.1%</td>
+    <td class="hint">HARDEST — thin horizontal slots only</td>
+  </tr>
+</table>
+<div class="footer">Cycle: 死→胃→竜→戦→悲→天→repeat | 42 dmg on contact | ~3.85s to position</div>
+</body>
+</html>

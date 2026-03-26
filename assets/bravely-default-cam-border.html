@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    width: 620px;
+    height: 470px;
+    overflow: hidden;
+    font-family: 'Cinzel', serif;
+  }
+
+  .cam-frame {
+    position: absolute;
+    top: 5px; left: 5px; right: 5px; bottom: 30px;
+    border: 3px solid #c9a84c;
+    box-shadow:
+      inset 0 0 0 2px rgba(10,8,20,0.8),
+      inset 0 0 0 5px rgba(201,168,76,0.3),
+      0 0 15px rgba(201,168,76,0.3);
+    animation: camPulse 4s ease-in-out infinite;
+  }
+
+  .cam-frame::before, .cam-frame::after {
+    content: '';
+    position: absolute;
+    width: 12px; height: 12px;
+    border: 2px solid #e8d08c;
+    background: rgba(10,8,20,0.9);
+  }
+  .cam-frame::before { top: -5px; left: -5px; border-right: none; border-bottom: none; }
+  .cam-frame::after { top: -5px; right: -5px; border-left: none; border-bottom: none; }
+
+  .corner-bl, .corner-br {
+    position: absolute;
+    width: 12px; height: 12px;
+    border: 2px solid #e8d08c;
+    background: rgba(10,8,20,0.9);
+  }
+  .corner-bl { bottom: 30px; left: 0px; border-right: none; border-top: none; }
+  .corner-br { bottom: 30px; right: 0px; border-left: none; border-top: none; }
+
+  @keyframes camPulse {
+    0%, 100% { box-shadow: inset 0 0 0 2px rgba(10,8,20,0.8), inset 0 0 0 5px rgba(201,168,76,0.3), 0 0 15px rgba(201,168,76,0.3); }
+    50% { box-shadow: inset 0 0 0 2px rgba(10,8,20,0.8), inset 0 0 0 5px rgba(230,200,100,0.5), 0 0 25px rgba(201,168,76,0.5); }
+  }
+
+  .name-bar {
+    position: absolute;
+    bottom: 2px;
+    left: 5px; right: 5px;
+    height: 24px;
+    background: linear-gradient(90deg, rgba(10,8,20,0.9), rgba(40,30,15,0.9), rgba(10,8,20,0.9));
+    border: 2px solid #c9a84c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .name-text {
+    font-size: 10px;
+    color: #e8d08c;
+    letter-spacing: 5px;
+    text-shadow: 0 0 8px rgba(201,168,76,0.5);
+  }
+
+  /* Crystal accents on left edge */
+  .crystal-tick {
+    position: absolute;
+    left: -3px;
+    width: 6px;
+    height: 6px;
+    background: #e8d08c;
+    transform: rotate(45deg);
+    box-shadow: 0 0 6px rgba(232,208,140,0.5);
+    animation: tickPulse 3s ease-in-out infinite;
+  }
+
+  @keyframes tickPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cam-frame">
+  <div class="corner-bl"></div>
+  <div class="corner-br"></div>
+</div>
+
+<div class="name-bar">
+  <span class="name-text">STRUKTURED</span>
+</div>
+
+<script>
+for (let i = 0; i < 6; i++) {
+  const tick = document.createElement('div');
+  tick.className = 'crystal-tick';
+  tick.style.top = (50 + i * 60) + 'px';
+  tick.style.animationDelay = (i * 0.2) + 's';
+  document.querySelector('.cam-frame').appendChild(tick);
+}
+</script>
+
+</body>
+</html>
