@@ -287,18 +287,23 @@ def _run_auth_py_subprocess(client_id: str, client_secret: str) -> dict | None:
         return None
 
     try:
-        logger.info("twitch_reauth: running auth.py subprocess...")
+        logger.info(f"twitch_reauth: running auth.py subprocess from {auth_py.parent}...")
         env = dict(os.environ)
         env["TWITCH_CLIENT_ID"] = client_id
         env["TWITCH_CLIENT_SECRET"] = client_secret
 
+        # Find uv binary — might not be in MCP server's PATH
+        import shutil
+        uv_path = shutil.which("uv") or os.path.expanduser("~/.local/bin/uv") or "uv"
+        logger.info(f"twitch_reauth: using uv at {uv_path}")
+
         result = subprocess.run(
-            ["uv", "run", "python", str(auth_py)],
+            [uv_path, "run", "python", str(auth_py)],
             cwd=str(auth_py.parent),
             env=env,
             capture_output=True,
             text=True,
-            timeout=15,  # 15 second timeout — if it needs browser input, bail
+            timeout=15,
         )
 
         if result.returncode == 0 and "SUCCESS" in result.stdout:
@@ -322,7 +327,7 @@ def _run_auth_py_subprocess(client_id: str, client_secret: str) -> dict | None:
                 "message": "Token refreshed via auth.py",
             }
         else:
-            logger.warning(f"twitch_reauth: auth.py failed: {result.stderr[:200]}")
+            logger.warning(f"twitch_reauth: auth.py failed (rc={result.returncode}): stdout={result.stdout[:200]} stderr={result.stderr[:200]}")
             return None
     except subprocess.TimeoutExpired:
         logger.warning("twitch_reauth: auth.py timed out (probably needs browser auth)")
