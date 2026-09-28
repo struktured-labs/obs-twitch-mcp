@@ -354,12 +354,14 @@ class OBSClient:
             List of filter dicts with name, kind, index, enabled status
         """
         result = self.client.get_source_filter_list(source_name)
+        # obsws-python only snake_cases top-level response fields; each entry in
+        # `filters` is a raw dict with the protocol's camelCase keys.
         return [
             {
-                "name": f.filter_name,
-                "kind": f.filter_kind,
-                "index": f.filter_index,
-                "enabled": f.filter_enabled,
+                "name": f["filterName"],
+                "kind": f["filterKind"],
+                "index": f["filterIndex"],
+                "enabled": f["filterEnabled"],
             }
             for f in result.filters
         ]
