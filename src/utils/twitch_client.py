@@ -181,15 +181,20 @@ class TwitchClient:
         """Get recent chat messages (from cache)."""
         return self._chat_messages[-count:]
 
-    def receive_message(self, msg: ChatMessage) -> None:
-        """Receive a chat message: cache it, log it, and notify handlers."""
+    def receive_message(self, msg: ChatMessage, log: bool = True) -> None:
+        """Receive a chat message: cache it, log it, and notify handlers.
+
+        Pass log=False when the caller already persisted it (the ChatListener
+        logs every message itself before dispatching to handlers).
+        """
         # Add to in-memory cache (keep last 500)
         self._chat_messages.append(msg)
         if len(self._chat_messages) > 500:
             self._chat_messages = self._chat_messages[-500:]
 
         # Persist to log file
-        chat_logger.log_message(msg)
+        if log:
+            chat_logger.log_message(msg)
 
         # Notify handlers
         for handler in self._message_handlers:

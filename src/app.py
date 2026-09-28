@@ -246,6 +246,12 @@ def start_chat_listener(token: str = "") -> ChatListener:
         oauth_token=token,
     )
 
+    # Feed the TwitchClient: its cache backs twitch_get_recent_messages, and its
+    # handlers are the engagement tracker and autoclip. Without this the listener
+    # logged chat to disk but every one of those saw nothing. Resolve the client
+    # per message, since twitch_reconnect swaps in a new instance.
+    _chat_listener.add_handler(lambda msg: get_twitch_client().receive_message(msg, log=False))
+
     # Add SSE broadcast handler
     _chat_listener.add_handler(_create_sse_handler())
 
