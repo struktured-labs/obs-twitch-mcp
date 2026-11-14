@@ -52,10 +52,12 @@ def _run_action(action: ScheduledAction) -> None:
             twitch.send_chat_message(f"⏰ Reminder: {message}")
 
         elif action.action_type == "message":
-            # Send a message to chat
-            message = action.data.get("message", "")
+            # Send a message to chat (static, or LLM-written when dynamic)
+            twitch = get_twitch_client()
+            message = _compose_message_post(action, twitch)
+            if message is None:
+                return  # skipped (e.g. stream offline); not counted as a run
             if message:
-                twitch = get_twitch_client()
                 twitch.send_chat_message(message)
 
         elif action.action_type == "scene_change":
@@ -77,6 +79,60 @@ def _run_action(action: ScheduledAction) -> None:
 
     except Exception as e:
         logger.error(f"Scheduled action failed: {action.name} - {e}")
+
+
+HISTORY_KEEP = 5
+CHAT_CONTEXT_COUNT = 15
+
+
+def _compose_message_post(action: ScheduledAction, twitch) -> str | None:
+    """Return the text to post for a recurring message, or None to skip this run.
+
+    - only_when_live: skip (and don't count) while the channel is offline, so a
+      forgotten recurring message doesn't post for hours after the stream ends.
+      If the live check itself errors, post anyway rather than go silent.
+    - dynamic: have a small LLM write the post from the base message, stream
+      info, recent chat and the last few posts; falls back to the static text.
+    """
+    data = action.data
+    base = data.get("message", "")
+    stream_info = None
+    if data.get("only_when_live") or data.get("dynamic"):
+        try:
+            stream_info = twitch.get_stream_info()
+            if stream_info is None and data.get("only_when_live"):
+                data["skipped_offline"] = data.get("skipped_offline", 0) + 1
+                logger.info(f"Skipping '{action.name}': stream offline")
+                return None
+        except Exception as e:
+            logger.warning(f"Live check failed for '{action.name}', posting anyway: {e}")
+
+    if not data.get("dynamic"):
+        return base
+
+    from ..utils.recurring_ai import generate_recurring_message
+
+    recent = []
+    try:
+        for m in twitch.get_recent_messages(CHAT_CONTEXT_COUNT):
+            if m.message.startswith("«claude»"):
+                continue
+            recent.append((m.username, m.message))
+    except Exception as e:
+        logger.warning(f"Could not read recent chat for dynamic message: {e}")
+
+    history = data.setdefault("history", [])
+    text, generated = generate_recurring_message(
+        base_message=base,
+        context=data.get("context", ""),
+        stream_info=stream_info,
+        recent_chat=recent,
+        previous_posts=history,
+    )
+    history.append(text)
+    del history[:-HISTORY_KEEP]
+    data["last_generated"] = generated
+    return text
 
 
 def _scheduler_loop() -> None:
@@ -173,16 +229,30 @@ def set_reminder(message: str, minutes: int) -> dict:
 
 
 @mcp.tool()
-def set_recurring_message(message: str, interval_minutes: int, max_times: int = 0) -> dict:
+def set_recurring_message(
+    message: str,
+    interval_minutes: int,
+    max_times: int = 0,
+    dynamic: bool = False,
+    context: str = "",
+    only_when_live: bool = True,
+) -> dict:
     """
     Set a recurring message to post to chat.
 
     Useful for periodic reminders like "Follow the channel!" or social links.
 
     Args:
-        message: The message to post
+        message: The message to post. When dynamic, this is the base: its facts
+            and call-to-action (e.g. "try !ask") are kept, wording is varied.
         interval_minutes: Minutes between each post
         max_times: Maximum times to post (0 = unlimited)
+        dynamic: If True, a small LLM writes each post fresh from the base
+            message, `context`, stream title/game, recent chat and the last few
+            posts (no repeats). Falls back to the static message on any error.
+        context: Extra background for dynamic posts (game, mods, project notes).
+        only_when_live: Skip posts while the channel is offline (default True),
+            so a forgotten recurring message doesn't spam after the stream ends.
 
     Returns:
         Dict with action ID.
@@ -198,16 +268,26 @@ def set_recurring_message(message: str, interval_minutes: int, max_times: int = 
         action_type="message",
         next_run=first_run,
         interval_seconds=interval_minutes * 60,
-        data={"message": message},
+        data={
+            "message": message,
+            "dynamic": dynamic,
+            "context": context,
+            "only_when_live": only_when_live,
+        },
         max_runs=max_times if max_times > 0 else None,
     )
     _actions[action_id] = action
 
-    logger.info(f"Recurring message set every {interval_minutes}m: {message}")
+    logger.info(
+        f"Recurring message set every {interval_minutes}m "
+        f"(dynamic={dynamic}, only_when_live={only_when_live}): {message}"
+    )
     return {
         "status": "created",
         "id": action_id,
         "message": message,
+        "dynamic": dynamic,
+        "only_when_live": only_when_live,
         "interval_minutes": interval_minutes,
         "first_run": first_run.isoformat(),
         "max_times": max_times if max_times > 0 else "unlimited",
@@ -268,6 +348,10 @@ def list_scheduled_actions() -> list[dict]:
             "interval_minutes": action.interval_seconds // 60 if action.interval_seconds else None,
             "run_count": action.run_count,
             "max_runs": action.max_runs,
+            "dynamic": action.data.get("dynamic", False),
+            "only_when_live": action.data.get("only_when_live", False),
+            "skipped_offline": action.data.get("skipped_offline", 0),
+            "last_post": (action.data.get("history") or [None])[-1],
         }
         for action in _actions.values()
     ]
