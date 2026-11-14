@@ -27,13 +27,18 @@ MAX_TOKENS = 200
 MAX_CHAT_CHARS = 480  # Twitch limit is 500; leave room for the prefix
 PREFIX = "«claude» "
 
-SYSTEM_PROMPT = """You write one periodic chat message for struktured's Twitch stream, posted by the channel's AI helper.
+SYSTEM_PROMPT = """You write one periodic chat message for struktured's Twitch stream,
+posted by the channel's AI helper.
 
 Rules:
-- ONE message, at most 2 short sentences, under 300 characters. Plain text, no quotes around it, no hashtags.
-- Keep every concrete fact and call-to-action from the BASE MESSAGE (e.g. a !command); everything else you may rephrase freely.
-- Vary it: talk about what's happening in the game, the mods/project, or riff lightly on recent chat. Don't repeat the angle or wording of the PREVIOUS POSTS.
-- You may mention a chatter by name only if they said something worth a friendly nod; never mock anyone, never mention bots/spam.
+- ONE message, at most 2 short sentences, under 300 characters.
+  Plain text, no quotes around it, no hashtags.
+- Keep every concrete fact and call-to-action from the BASE MESSAGE (e.g. a !command);
+  everything else you may rephrase freely.
+- Vary it: talk about what's happening in the game, the mods/project, or riff lightly
+  on recent chat. Don't repeat the angle or wording of the PREVIOUS POSTS.
+- You may mention a chatter by name only if they said something worth a friendly nod;
+  never mock anyone, never mention bots/spam.
 - Never invent facts about the game or the streamer beyond what you're given.
 - No URLs, no @everyone, no claims about follower/viewer counts.
 - Do NOT include the «claude» prefix; it is added automatically.
@@ -64,7 +69,8 @@ def _build_prompt(
     else:
         parts.append("RECENT CHAT: (quiet)")
     if previous_posts:
-        parts.append("PREVIOUS POSTS (don't repeat these):\n" + "\n".join(f"- {p}" for p in previous_posts))
+        posts = "\n".join(f"- {p}" for p in previous_posts)
+        parts.append(f"PREVIOUS POSTS (don't repeat these):\n{posts}")
     return "\n\n".join(parts)
 
 

@@ -18,7 +18,9 @@ class FakeTwitch:
     def get_stream_info(self):
         if self.live_raises:
             raise RuntimeError("helix down")
-        return {"title": "F13 on SNES", "game_name": "Friday the 13th"} if self.live else None
+        if not self.live:
+            return None
+        return {"title": "F13 on SNES", "game_name": "Friday the 13th"}
 
     def get_recent_messages(self, count=10):
         return self.chat[-count:]
@@ -28,7 +30,7 @@ class FakeTwitch:
 
 
 class FakeClient:
-    def __init__(self, reply="Jason's lurking near cabin 3. Ask me anything with !ask", raises=False):
+    def __init__(self, reply="Jason is near cabin 3. Ask me anything with !ask", raises=False):
         self.reply = reply
         self.raises = raises
         self.prompts = []
